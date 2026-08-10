@@ -1,0 +1,2597 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Driving-Aware Perception Metrics — Design Plan</title>
+<style>
+  :root {
+    --bg: #F6F7F5;
+    --surface: #FFFFFF;
+    --ink: #1B2420;
+    --ink2: #47524C;
+    --muted: #68736D;
+    --line: #DEE4DF;
+    --accent: #0F8A6C;
+    --accent-text: #0A6B52;
+    --accent-soft: #E7F2ED;
+    --ego: #2B5FD9;
+    --ego-soft: #E4EBFB;
+    --obj: #C2410C;
+    --obj-soft: #F9E9E0;
+    --danger: #B3261E;
+    --warn: #8A5A00;
+    --chip-bg: #EDF1EE;
+    --code-bg: #F0F3F0;
+    --shadow: 0 1px 3px rgba(27, 36, 32, 0.07);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0F1512;
+      --surface: #161D19;
+      --ink: #E4EAE5;
+      --ink2: #A9B5AE;
+      --muted: #7E8A83;
+      --line: #28322C;
+      --accent: #2AA47B;
+      --accent-text: #56C79C;
+      --accent-soft: #14251E;
+      --ego: #6C8FE8;
+      --ego-soft: #1A2233;
+      --obj: #D2743F;
+      --obj-soft: #2E2018;
+      --danger: #E5776C;
+      --warn: #D8A04C;
+      --chip-bg: #1D2621;
+      --code-bg: #131A16;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1512;
+    --surface: #161D19;
+    --ink: #E4EAE5;
+    --ink2: #A9B5AE;
+    --muted: #7E8A83;
+    --line: #28322C;
+    --accent: #2AA47B;
+    --accent-text: #56C79C;
+    --accent-soft: #14251E;
+    --ego: #6C8FE8;
+    --ego-soft: #1A2233;
+    --obj: #D2743F;
+    --obj-soft: #2E2018;
+    --danger: #E5776C;
+    --warn: #D8A04C;
+    --chip-bg: #1D2621;
+    --code-bg: #131A16;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+  :root[data-theme="light"] {
+    --bg: #F6F7F5;
+    --surface: #FFFFFF;
+    --ink: #1B2420;
+    --ink2: #47524C;
+    --muted: #68736D;
+    --line: #DEE4DF;
+    --accent: #0F8A6C;
+    --accent-text: #0A6B52;
+    --accent-soft: #E7F2ED;
+    --ego: #2B5FD9;
+    --ego-soft: #E4EBFB;
+    --obj: #C2410C;
+    --obj-soft: #F9E9E0;
+    --danger: #B3261E;
+    --warn: #8A5A00;
+    --chip-bg: #EDF1EE;
+    --code-bg: #F0F3F0;
+    --shadow: 0 1px 3px rgba(27, 36, 32, 0.07);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  main, header.doc, footer.doc {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  h1, h2, h3 {
+    font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  h1 { font-size: 2.4rem; font-weight: 700; margin: 0.4rem 0 0.6rem; }
+  h2 { font-size: 1.55rem; margin: 0 0 0.4rem; }
+  h3 { font-size: 1.15rem; margin: 1.4rem 0 0.5rem; }
+  p { max-width: none; }
+  a { color: var(--accent-text); }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .eyebrow {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+  .standfirst { font-size: 1.12rem; color: var(--ink2); }
+  header.doc { padding-top: 56px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 8px; }
+
+  .chip {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--chip-bg);
+    color: var(--ink2);
+    white-space: nowrap;
+  }
+  .chip.new { background: var(--accent-soft); color: var(--accent-text); }
+  .chip.det3d { background: var(--ego-soft); color: var(--ego); }
+  .chip.seg3d { background: var(--accent-soft); color: var(--accent-text); }
+  .chip.repo-aml { border: 1px solid var(--accent); color: var(--accent-text); background: transparent; }
+  .chip.repo-ape { border: 1px solid var(--ego); color: var(--ego); background: transparent; }
+  .chip.gap { background: var(--obj-soft); color: var(--obj); }
+
+  section { margin: 56px 0; }
+  .sec-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  nav.toc {
+    margin: 32px 0 0;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  nav.toc ol { margin: 6px 0 0; padding-left: 1.2rem; columns: 2; column-gap: 40px; }
+  nav.toc li { margin: 4px 0; break-inside: avoid; }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  @media (max-width: 640px) { nav.toc ol { columns: 1; } }
+
+  .cards { display: grid; gap: 14px; margin: 18px 0; }
+  .cards.three { grid-template-columns: repeat(3, 1fr); }
+  .cards.two { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 760px) { .cards.three, .cards.two { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card h3 { margin-top: 0; }
+  .card p { font-size: 0.92rem; color: var(--ink2); margin-bottom: 0; }
+  .card ul { padding-left: 1.1rem; margin: 8px 0 0; font-size: 0.92rem; color: var(--ink2); }
+  .card li { margin: 3px 0; }
+  .card .impact { font-size: 0.8rem; font-weight: 600; margin-top: 10px; }
+  .impact.ok { color: var(--accent-text); }
+  .impact.bad { color: var(--danger); }
+
+  .axis-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .axis {
+    flex: 1 1 220px;
+    background: var(--accent-soft);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+  .axis b { display: block; color: var(--accent-text); font-size: 0.95rem; }
+  .axis span { font-size: 0.85rem; color: var(--ink2); }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.9rem;
+    background: var(--surface);
+    font-variant-numeric: tabular-nums;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin: 16px 0;
+  }
+  th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    background: var(--chip-bg);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.yes { color: var(--accent-text); font-weight: 600; }
+  td.no { color: var(--muted); }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin: 18px 0;
+    box-shadow: var(--shadow);
+  }
+  .metric-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+  .metric-id {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--accent-text);
+    background: var(--accent-soft);
+    border-radius: 6px;
+    padding: 2px 8px;
+  }
+  .metric h3 { margin: 0; flex: 1 1 auto; }
+  .metric > p { font-size: 0.95rem; }
+
+  details {
+    margin: 10px 0 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+  details summary {
+    cursor: pointer;
+    padding: 9px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink2);
+    list-style-position: inside;
+  }
+  details[open] summary { border-bottom: 1px solid var(--line); }
+  details .body { padding: 12px 16px; font-size: 0.9rem; color: var(--ink2); }
+  details .body p { margin: 8px 0; }
+  details .body ul { padding-left: 1.2rem; margin: 8px 0; }
+
+  .formula {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.92rem;
+    background: var(--code-bg);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin: 10px 0;
+    overflow-x: auto;
+    color: var(--ink);
+  }
+  code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  figure { margin: 18px 0; }
+  .fig-wrap { overflow-x: auto; }
+  figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 8px;
+    max-width: 68ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .svg-label { font-family: system-ui, sans-serif; font-size: 12px; fill: var(--ink2); }
+  .svg-label.small { font-size: 10.5px; fill: var(--muted); }
+  .svg-label.strong { font-weight: 600; fill: var(--ink); }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 18px;
+    margin: 18px 0;
+    font-size: 0.93rem;
+    color: var(--ink2);
+  }
+  .callout b { color: var(--accent-text); }
+  .callout.risk { border-left-color: var(--obj); background: var(--obj-soft); }
+  .callout.risk b { color: var(--obj); }
+
+  .family-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 18px 0; }
+  @media (max-width: 760px) { .family-grid { grid-template-columns: 1fr; } }
+  .family { border-top: 3px solid var(--accent); }
+  .family .fam-letter {
+    font-family: Charter, Georgia, serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent-text);
+    line-height: 1;
+  }
+  .family ul { list-style: none; padding: 0; margin: 10px 0 0; }
+  .family li { display: flex; gap: 8px; align-items: baseline; margin: 6px 0; font-size: 0.92rem; }
+  .family li .mid {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent-text);
+    min-width: 2em;
+  }
+
+  footer.doc {
+    margin-top: 72px;
+    padding-bottom: 56px;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  footer.doc p { max-width: none; }
+
+  @media print {
+    body { background: #fff; }
+    nav.toc { display: none; }
+    .metric, .card { break-inside: avoid; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="doc">
+  <div class="eyebrow">autoware-ml × autoware_perception_evaluation · design proposal</div>
+  <h1>Driving-Aware Perception Metrics</h1>
+  <p class="standfirst">
+    Our mAP and mIoU improve week by week — yet a higher score does not mean the car drives more safely.
+    This plan adds a metric set that weights every error by <em>where</em> it happens, <em>when</em> it could
+    matter, and <em>which</em> box properties planning actually consumes.
+  </p>
+  <div class="meta-row">
+    <span class="chip">Status: draft for review</span>
+    <span class="chip">2026-07-22</span>
+    <span class="chip">Scope: detection3d + segmentation3d</span>
+    <span class="chip repo-aml">AML = autoware-ml</span>
+    <span class="chip repo-ape">APE = autoware_perception_evaluation</span>
+  </div>
+
+  <nav class="toc" aria-label="Table of contents">
+    <span class="sec-label">Contents</span>
+    <ol>
+      <li><a href="#why">Why our metrics must change</a></li>
+      <li><a href="#today">What we measure today</a></li>
+      <li><a href="#glance">The plan at a glance</a></li>
+      <li><a href="#core">One metric core, pluggable inputs</a></li>
+      <li><a href="#filters">Evaluation filters (region · corridor · range)</a></li>
+      <li><a href="#classes">Classes and taxonomy</a></li>
+      <li><a href="#catalog">Metric catalog</a></li>
+      <li><a href="#architecture">Evaluation architecture (suites &amp; contracts)</a></li>
+      <li><a href="#seg-parity">Segmentation in perception_evaluation</a></li>
+      <li><a href="#rejected">Considered and on hold</a></li>
+      <li><a href="#governance">Versioning — metrics &amp; test sets</a></li>
+      <li><a href="#data">Data requirements</a></li>
+      <li><a href="#rollout">Rollout phases</a></li>
+      <li><a href="#refs">References</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============================================================ 1 -->
+<section id="why">
+  <div class="sec-label">Section 1</div>
+  <h2>Why our metrics must change</h2>
+  <p>
+    Three real failure patterns from our fleet show the problem. Each pair has the
+    <strong>same effect on mAP</strong> — and a completely different effect on driving.
+  </p>
+
+  <div class="cards three">
+    <div class="card">
+      <h3>False positives behind a fence</h3>
+      <p>Dozens of false positives on parked vehicles behind a fence, outside any drivable area.</p>
+      <p class="impact ok">Driving impact: negligible — planning never interacts with them.</p>
+      <p class="impact bad">Metric impact today: large mAP penalty.</p>
+    </div>
+    <div class="card">
+      <h3>One miss in a crowd</h3>
+      <p>A few pedestrian false negatives inside a dense crowd, versus completely missing a single
+         pedestrian directly ahead of ego.</p>
+      <p class="impact bad">Driving impact: the single miss ahead is critical.</p>
+      <p class="impact ok">Metric impact today: both look identical.</p>
+    </div>
+    <div class="card">
+      <h3>Phantom on the median</h3>
+      <p>A rare false positive of a pedestrian on the median strip — directly beside ego's lane.</p>
+      <p class="impact bad">Driving impact: emergency braking on an open road.</p>
+      <p class="impact ok">Metric impact today: statistically invisible.</p>
+    </div>
+  </div>
+
+  <p>
+    The fix is not one new number. It is weighting and slicing errors along three axes:
+  </p>
+  <div class="axis-strip">
+    <div class="axis"><b>WHERE</b><span>Is the object on or near a drivable surface? On ego's path? (lanelet map, ego corridor)</span></div>
+    <div class="axis"><b>WHEN</b><span>How soon could ego and the object physically collide? (time-to-collision)</span></div>
+    <div class="axis"><b>WHAT</b><span>Are the box properties planning consumes correct — yaw, corners, nearest surface, velocity — and stable over time?</span></div>
+  </div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="today">
+  <div class="sec-label">Section 2</div>
+  <h2>What we measure today</h2>
+
+  <div class="cards two">
+    <div class="card">
+      <h3><span class="chip repo-aml">AML</span> autoware-ml <span style="font-weight:400; font-size:0.8rem; color:var(--muted)">(model development)</span></h3>
+      <ul>
+        <li><strong>Detection 3D:</strong> mAP + APH (nuScenes-style BEV center-distance matching), NDS,
+            TP errors (ATE / ASE / AOE / AVE / AAE) at recall targets and the optimal-F1 point,
+            precision–recall curves.</li>
+        <li>Per-class range caps, min-LiDAR-points GT filter, radial range windows.</li>
+        <li>Light suite on validation, full suite on test.</li>
+        <li><strong>Segmentation 3D:</strong> per-class IoU / mIoU, accuracy, precision / recall / F1.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="chip repo-ape">APE</span> autoware_perception_evaluation <span style="font-weight:400; font-size:0.8rem; color:var(--muted)">(product runtime)</span></h3>
+      <ul>
+        <li><strong>Detection:</strong> mAP + mAPH with four matching modes — center distance, BEV IoU,
+            3D IoU, plane (nearest-surface) distance.</li>
+        <li><strong>Tracking:</strong> CLEAR metrics — MOTA, MOTP, ID switches.</li>
+        <li><strong>2D:</strong> detection / tracking mAP, classification accuracy.</li>
+        <li><strong>Sensing:</strong> point-cloud presence checks in detection / non-detection areas.</li>
+        <li>Prediction metrics: still WIP.</li>
+        <li><strong>Segmentation (2D or 3D): none</strong> — see Section 9.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p><strong>What neither repo has today:</strong></p>
+  <div class="meta-row">
+    <span class="chip gap">no map / location awareness</span>
+    <span class="chip gap">no time-to-collision weighting</span>
+    <span class="chip gap">only mean errors — no max / percentile tails</span>
+    <span class="chip gap">no temporal stability at detection level</span>
+    <span class="chip gap">no boundary quality for segmentation</span>
+    <span class="chip gap">no segmentation support in the runtime evaluator</span>
+  </div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section id="glance">
+  <div class="sec-label">Section 3</div>
+  <h2>The plan at a glance</h2>
+  <p>
+    Sixteen metrics across six families, each reported along <strong>three axes</strong> — distance-range
+    bins, lanelet <strong>region variants</strong> (whole-scene · road · walkway — the region
+    filter in <a href="#filters">Section 5</a>), and the <strong>class taxonomy</strong> (per trained class
+    vs behaviour groups — <a href="#taxonomy">Section 6</a>).
+    Each links to its detail page in <a href="#catalog">Section 7</a>.
+  </p>
+
+  <div class="family-grid">
+    <div class="card family">
+      <span class="fam-letter">A</span>
+      <h3>True-positive quality</h3>
+      <p>When we <em>do</em> detect an object — are the box properties planning consumes correct?</p>
+      <ul>
+        <li><span class="mid">A1</span><a href="#m-a1">Corner displacement error</a> <span class="chip det3d">det3d</span></li>
+        <li><span class="mid">A2</span><a href="#m-a2">Heading-flip rate</a> <span class="chip det3d">det3d</span></li>
+        <li><span class="mid">A3</span><a href="#m-a3">Signed nearest-surface error</a> <span class="chip det3d">det3d</span></li>
+      </ul>
+    </div>
+    <div class="card family">
+      <span class="fam-letter">B</span>
+      <h3>Criticality-weighted precision &amp; recall</h3>
+      <p>Count errors where they matter: on the map, on ego's path, weighted by time-to-collision.</p>
+      <ul>
+        <li><span class="mid">B1</span><a href="#m-b1">Critical FP / FN curves</a> <span class="chip det3d">det3d</span></li>
+        <li><span class="mid">B2</span><a href="#m-b2">Collision-risk-weighted mAP</a> <span class="chip det3d">det3d</span></li>
+        <li><span class="mid">B3</span><a href="#m-b3">Occlusion-aware recall split</a> <span class="chip det3d">det3d</span></li>
+      </ul>
+    </div>
+    <div class="card family">
+      <span class="fam-letter">C</span>
+      <h3>Temporal stability</h3>
+      <p>Downstream tracking lives or dies on frame-to-frame consistency — measure it before the tracker.</p>
+      <ul>
+        <li><span class="mid">C1</span><a href="#m-c1">Detection stability per instance</a> <span class="chip det3d">det3d</span></li>
+        <li><span class="mid">C2</span><a href="#m-c2">Consecutive-miss streaks</a> <span class="chip det3d">det3d</span></li>
+      </ul>
+    </div>
+    <div class="card family">
+      <span class="fam-letter">D</span>
+      <h3>Segmentation quality</h3>
+      <p>mIoU hides edge errors on large regions and safety errors on the road itself.</p>
+      <ul>
+        <li><span class="mid">D1</span><a href="#m-d1">Error clusters (phantom obstacles)</a> <span class="chip seg3d">seg3d</span></li>
+        <li><span class="mid">D2</span><a href="#m-d2">Small-object partial-detection score</a> <span class="chip">diagnostic</span></li>
+        <li><span class="mid">D3</span><a href="#m-d3">Neighbourhood-tolerant error rate</a> <span class="chip seg3d">seg3d</span></li>
+      </ul>
+    </div>
+    <div class="card family">
+      <span class="fam-letter">E</span>
+      <h3>Uncertainty</h3>
+      <p>Is the model's confidence honest, and does its uncertainty flag its own mistakes? Reported
+         whole-scene and per lanelet region (road · walkway).</p>
+      <ul>
+        <li><span class="mid">E1</span><a href="#m-e1">Calibration error (ECE)</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
+        <li><span class="mid">E2</span><a href="#m-e2">Uncertainty usefulness (entropy AUROC)</a> <span class="chip">diagnostic</span></li>
+        <li><span class="mid">E3</span><a href="#m-e3">Confident-error rate</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
+      </ul>
+    </div>
+    <div class="card family">
+      <span class="fam-letter">F</span>
+      <h3>Confusion matrices</h3>
+      <p>Which classes get mistaken for which — read directly, per class and per behaviour group.</p>
+      <ul>
+        <li><span class="mid">F1</span><a href="#m-f1">Class confusion matrix</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout">
+    <b>Region variants — the second evaluation axis.</b> Lanelet masking is not a single metric; it is an
+    axis applied to <em>every</em> metric here, det3d and seg3d alike, exactly as the distance-range bins
+    are. Each metric is reported in four region slices: <b>whole-scene</b> (no map), <b>road</b> —
+    everywhere the car drives: <code>road</code>, <code>road_shoulder</code> and <code>crosswalk</code>
+    lanelets plus drivable-area polygons — <b>walkway</b> (pedestrian <code>walkway</code> lanelets), and
+    <b>both</b> (their union).
+    Detection boxes and segmentation points are placed into a region by transforming them to the map frame
+    with the per-frame ego pose and testing polygon membership. <a href="#filters">Section 5</a> defines the
+    filter; a region slice on a map-less dataset fails loud rather than silently reporting whole-scene,
+    and whole-scene is always published beside the region slices.
+  </div>
+
+  <h3>Where each family lives</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Family</th><th>autoware-ml (offline, GT + map)</th><th>perception_evaluation (offline + online)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>A</strong> · TP quality</td><td class="yes">✔ primary</td><td class="yes">✔ duplicate, same spec</td></tr>
+        <tr><td><strong>B</strong> · criticality-weighted</td><td class="yes">✔ primary (map ships with dataset; ego reachable set)</td><td class="yes">✔ replay mode + online mode</td></tr>
+        <tr><td><strong>C</strong> · stability</td><td class="yes">✔ via GT instance tokens (no tracker needed)</td><td class="yes">✔ authoritative, on tracker output</td></tr>
+        <tr><td><strong>D</strong> · segmentation</td><td class="yes">✔ primary</td><td class="yes">✔ reproduce the AML suite point metrics, plus runtime-only extras (Section 9)</td></tr>
+        <tr><td><strong>E</strong> · uncertainty</td><td class="yes">✔ primary (seg per-point scores; E1 &amp; E3 also on det3d detection scores)</td><td class="yes">✔ duplicate, same spec</td></tr>
+        <tr><td>Latency, ID switches, rosbag replay</td><td class="no">— not possible (no runtime)</td><td class="yes">✔ only here</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:0.9rem; color:var(--ink2);">
+    Cutting across all six families are three report axes applied to every metric: <strong>distance-range
+    bins</strong>, the <strong>region variants</strong> (whole-scene · road · walkway) defined in
+    <a href="#filters">Section 5</a>, and the <strong>class taxonomy</strong> (per trained class vs
+    behaviour groups) defined in <a href="#taxonomy">Section 6</a>.
+  </p>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="core">
+  <div class="sec-label">Section 4</div>
+  <h2>One metric core, pluggable inputs</h2>
+  <p>
+    Every collision-risk metric in family B answers the same question — <em>“how soon could this object
+    and ego collide?”</em> — with one shared computation: propagate ego and the object forward as
+    <strong>reachable sets</strong> and take the first time they overlap. There is a single model — no
+    fidelity levels. What is <em>pluggable</em> is only the <strong>input source</strong> behind one
+    interface: offline eval-output here, live ROS messages in perception_evaluation.
+  </p>
+  <div class="callout risk">
+    <p style="margin-top:0"><b>A perception metric must not depend on how anyone drove.</b> The recorded
+    ego path and the observed motion of other agents each already encode a driving <em>decision</em> — the
+    safety driver braking for the pedestrian our model missed, or a car that merely happened to be stopped.
+    Score against them and planning leaks into a perception number: the model is rewarded for a hazard
+    <em>someone else</em> avoided. Miss a pedestrian, the safety driver brakes, the recorded path swerves
+    clear, TTC looks large; yet had the model driven it would not have braked and TTC would be near zero.</p>
+    <p style="margin-bottom:0">So no future is ever the recorded path or an observed velocity. Instead every
+    agent — and ego — is propagated at the <strong>maximum speed the map allows</strong> over the surface its
+    class may travel, and TTC is the first time the two reachable sets meet. Fully planner-independent, and
+    deterministic from the map alone.</p>
+  </div>
+
+  <h3>The reachability model</h3>
+  <p>Ego and every dynamic agent expand into a <strong>reachable set</strong> that grows with the look-ahead
+    time; a static object stays put. The set shape is per class:</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Class</th><th>Reachable set</th><th>Max speed</th></tr></thead>
+      <tbody>
+        <tr><td>car · truck · bus · train · motorcycle <span style="color:var(--ink2)">(and ego)</span></td>
+            <td>the <b>worst-case “hat”</b> — everything reachable at max speed under the tightest feasible
+            turn (bounded curvature), <b>clipped to the drivable lanelets</b></td><td>lanelet speed limit</td></tr>
+        <tr><td>pedestrian · animal · bicycle</td>
+            <td>an <b>isotropic disc</b> — free to move in any direction, over any surface</td>
+            <td>a per-class “reasonable run” cap</td></tr>
+        <tr><td>barrier · traffic_cone · debris · bicycle_rack · vehicle_extension</td>
+            <td><b>stationary</b> — the object footprint; only ego approaches it</td><td>0</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:0.9rem; color:var(--ink2)">
+    <b>TTC</b> = the earliest look-ahead time at which ego's reachable set and the object's set overlap
+    (stepped at <code>dt</code>), else <b>∞</b> within the horizon <code>T</code>. The horizon is grounded in
+    stopping physics — reaction + braking from the lane speed limit (<a href="#rollout">Section 13</a>).
+  </p>
+
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 700 300" width="700" height="300" role="img" aria-labelledby="fig-reach-title">
+      <title id="fig-reach-title">Bird's-eye worst-case reachability: ego expands to everything reachable at maximum speed under its tightest feasible left/right turn — constant-curvature arcs that keep their curvature right up to the road edge, where the drivable area hard-clips them with a sharp corner. A crossing pedestrian expands an isotropic disc; a stationary barrier stays put. TTC is the first time a set meets ego's region.</title>
+      <defs><clipPath id="road-clip"><rect x="0" y="92" width="700" height="150"/></clipPath></defs>
+      <rect x="0" y="46" width="700" height="46" fill="var(--chip-bg)" opacity="0.55"/>
+      <text x="34" y="40" class="svg-label small">sidewalk</text>
+      <rect x="0" y="92" width="700" height="150" fill="var(--chip-bg)" rx="4"/>
+      <text x="612" y="234" class="svg-label small" text-anchor="end">road (drivable)</text>
+      <!-- reachable region + its arcs are drawn extending off-road, then hard-clipped to the road -->
+      <g clip-path="url(#road-clip)">
+        <path d="M 90 167 C 150 167 200 108 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290 C 200 226 150 167 90 167 Z" fill="var(--ego)" opacity="0.16"/>
+        <path d="M 90 167 C 150 167 200 108 210 44" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 90 167 C 150 167 200 226 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>
+        <path d="M 90 167 L 372 167" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3" stroke-dasharray="4 4"/>
+        <path d="M 90 167 Q 235 150 322 112" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3"/>
+        <path d="M 90 167 Q 235 184 322 222" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3"/>
+      </g>
+      <!-- time ticks along the straight centerline -->
+      <circle cx="160" cy="167" r="2.5" fill="var(--ego)"/><text x="160" y="182" class="svg-label small" text-anchor="middle">1</text>
+      <circle cx="231" cy="167" r="2.5" fill="var(--ego)"/><text x="231" y="182" class="svg-label small" text-anchor="middle">2</text>
+      <circle cx="301" cy="167" r="2.5" fill="var(--ego)"/><text x="301" y="182" class="svg-label small" text-anchor="middle">3 s</text>
+      <rect x="44" y="154" width="46" height="26" rx="4" fill="var(--ego)"/>
+      <text x="67" y="148" class="svg-label strong" text-anchor="middle">ego</text>
+      <text x="150" y="284" class="svg-label small">worst case: max speed + tightest turn, hard-clipped at the road edge</text>
+      <!-- crossing pedestrian + isotropic disc -->
+      <circle cx="235" cy="62" r="48" fill="var(--obj)" opacity="0.08"/>
+      <circle cx="235" cy="62" r="48" fill="none" stroke="var(--obj)" stroke-width="1.5" stroke-dasharray="5 5" opacity="0.6"/>
+      <circle cx="235" cy="62" r="7" fill="var(--obj)"/>
+      <text x="150" y="30" class="svg-label small">pedestrian · disc</text>
+      <circle cx="235" cy="99" r="9" fill="none" stroke="var(--danger)" stroke-width="2.5"/>
+      <circle cx="235" cy="99" r="2.5" fill="var(--danger)"/>
+      <text x="486" y="118" class="svg-label strong" text-anchor="middle">set ∩ ego region → finite TTC</text>
+      <!-- stationary barrier inside the region -->
+      <rect x="330" y="160" width="13" height="22" rx="2" fill="var(--muted)"/>
+      <text x="336" y="155" class="svg-label small" text-anchor="middle">barrier</text>
+      <circle cx="336" cy="170" r="9" fill="none" stroke="var(--danger)" stroke-width="2.5"/>
+      <circle cx="336" cy="170" r="2.5" fill="var(--danger)"/>
+    </svg>
+    </div>
+    <figcaption>
+      The one model in action, drawn at the <b>worst case</b>: ego's region is everything reachable at max
+      speed under its tightest feasible turn — constant-curvature arcs kept sharp right up to the road edge,
+      where the drivable area hard-clips them; a
+      pedestrian expands an <b>isotropic disc</b>; a barrier is a <b>fixed footprint</b>. TTC is the first
+      time a set meets ego's region — finite for the crossing pedestrian and the in-lane barrier here.
+    </figcaption>
+  </figure>
+
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 700 210" width="700" height="210" role="img" aria-labelledby="fig-lead-title">
+      <title id="fig-lead-title">A lead vehicle at the same speed: ego and the lead both advance to the right by the same amount over two seconds, so the gap between them never closes and the reachable sets never overlap — time-to-collision is infinite.</title>
+      <rect x="0" y="66" width="700" height="96" fill="var(--chip-bg)" rx="4"/>
+      <line x1="0" y1="114" x2="700" y2="114" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.4"/>
+      <!-- t=now: ego + lead -->
+      <rect x="52" y="120" width="46" height="24" rx="4" fill="var(--ego)"/>
+      <text x="75" y="160" class="svg-label small" text-anchor="middle">ego (t)</text>
+      <rect x="300" y="121" width="42" height="22" rx="4" fill="var(--obj)"/>
+      <text x="321" y="160" class="svg-label small" text-anchor="middle">lead (t)</text>
+      <!-- t+2: ghosts, shifted right by the same amount -->
+      <rect x="252" y="120" width="46" height="24" rx="4" fill="var(--ego)" opacity="0.28"/>
+      <text x="275" y="94" class="svg-label small" text-anchor="middle" opacity="0.75">ego (t+2)</text>
+      <rect x="500" y="121" width="42" height="22" rx="4" fill="var(--obj)" opacity="0.28"/>
+      <text x="521" y="94" class="svg-label small" text-anchor="middle" opacity="0.75">lead (t+2)</text>
+      <!-- equal shift arrows -->
+      <path d="M 104 132 L 246 132" stroke="var(--ego)" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <path d="M 238 127 L 248 132 L 238 137" fill="none" stroke="var(--ego)" stroke-width="1.6"/>
+      <path d="M 348 132 L 494 132" stroke="var(--obj)" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <path d="M 486 127 L 496 132 L 486 137" fill="none" stroke="var(--obj)" stroke-width="1.6"/>
+      <!-- equal gaps -->
+      <text x="199" y="184" class="svg-label small" text-anchor="middle">gap</text>
+      <text x="399" y="184" class="svg-label small" text-anchor="middle">gap (unchanged)</text>
+      <line x1="98" y1="176" x2="300" y2="176" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+      <line x1="298" y1="176" x2="500" y2="176" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+      <text x="350" y="40" class="svg-label strong" text-anchor="middle">same speed → gap never closes → TTC = ∞ (weight ≈ 0)</text>
+    </svg>
+    </div>
+    <figcaption>
+      The key case the old “agent-at-rest” model got wrong: a vehicle you are following at matched speed. Both
+      advance together, the gap is constant, the sets never meet — <b>TTC = ∞, weight ≈ 0</b>. Only genuine
+      closers (oncoming, crossing, or something static in the lane) earn weight.
+    </figcaption>
+  </figure>
+
+  <div class="callout">
+    <b>Cross-repo consistency — with realistic expectations.</b> There is <b>no shared metric library</b>:
+    autoware-ml and perception_evaluation implement the metrics independently, each from the versioned
+    <em>spec</em> (Section 11). Agreement is enforced by cross-repo parity tests — on identical inputs the
+    two implementations must produce the same numbers — not by sharing code. End-to-end replay is a different matter — it runs through ROS,
+    where message timing, queue drops and callback ordering vary between runs. Full-pipeline numbers are
+    therefore validated against <em>tolerance bands</em> (|Δ| ≤ ε per metric, ε spec-versioned), not
+    bitwise equality. Drift beyond ε still means a bug.
+  </div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="filters">
+  <div class="sec-label">Section 5</div>
+  <h2>Evaluation filters</h2>
+  <p>
+    A <strong>filter</strong> is an optional, per-metric selector that decides which ground truth,
+    predictions or points a metric sees before it runs. It is <em>not</em> a metric — it is an axis: the
+    same metric under a different filter is a different reported <em>slice</em>, not a new number to invent.
+    Three axes slice every metric in the catalog, and any of them can be combined:
+  </p>
+  <ul style="font-size:0.92rem; color:var(--ink2);">
+    <li>the lanelet <strong>region</strong> filter (road / walkway);</li>
+    <li>the ego <strong>corridor</strong> filter (objects and points in the ego's forward path);</li>
+    <li>the built-in <strong>distance-range</strong> bins (near / mid / far rings around the ego).</li>
+  </ul>
+  <p>
+    The region and corridor filters are pluggable <code>MetricFilter</code>s (more can be added without
+    touching any metric); the distance-range bins are the suite's built-in radial windowing. Every metric
+    carries an optional <code>filter</code> (default <code>None</code> = whole-scene) and is always also
+    emitted per range.
+  </p>
+  <p>
+    Both map-backed filters need a scene's <code>lanelet2_map.osm</code>. A scene that ships no map is
+    <strong>excluded from the filtered slices</strong> (an explicit availability check, not a swallowed
+    error — a map that <em>should</em> parse but is corrupt still fails loud) while its objects and points
+    still count in the whole-scene metrics. Each filter logs how many frames it ran on
+    (<code>covered / seen</code>) so a slice computed over fewer scenes than the whole-scene metrics is
+    visible, never silent — the class distribution of a filtered slice can differ from whole-scene when
+    map coverage is partial.
+  </p>
+
+  <h3>The region filter</h3>
+  <p>
+    <code>RegionFilter</code> keeps only the elements inside a chosen set of lanelet2 regions, so any metric
+    can be reported on the <b>road</b> or on the <b>walkway</b> — detection and segmentation
+    alike. Because a crosswalk is where the car drives, it belongs to the road region; the pedestrian-only
+    walkway is its own, lower-priority region. An optional <code>margin</code> (meters) adjusts the region
+    border; a boolean <code>expand</code> picks the direction — <code>false</code> (the default) cuts inward,
+    <code>true</code> grows outward. The default cut trims the strip along the <em>outer</em> border of the
+    mapped surface (second figure below): border points are naturally noisy — high entropy, frequent
+    misclassification — and would otherwise dominate a region's error metrics.
+  </p>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 660 230" width="660" height="230" role="img" aria-labelledby="fig-region-title">
+      <title id="fig-region-title">Bird's-eye view of the lanelet regions: a road band (including a crosswalk stripe, where the car drives) and a separate walkway band; objects are assigned to road, walkway, or neither, and metrics run per region. A car whose center is off the road but whose footprint overhangs it is still included, because membership is any footprint overlap (no threshold), not the center.</title>
+      <rect x="10" y="96" width="640" height="70" rx="6" fill="var(--ego)" opacity="0.14"/>
+      <line x1="10" y1="131" x2="650" y2="131" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.5"/>
+      <text x="24" y="120" class="svg-label small" fill="var(--ego)">road (road · road_shoulder · crosswalk)</text>
+      <rect x="418" y="96" width="30" height="70" fill="var(--ego)" opacity="0.22"/>
+      <text x="433" y="90" class="svg-label small" fill="var(--ego)" text-anchor="middle">crosswalk</text>
+      <rect x="10" y="60" width="640" height="26" rx="5" fill="var(--accent)" opacity="0.16"/>
+      <text x="24" y="52" class="svg-label small" fill="var(--accent-text)">walkway (pedestrian-only)</text>
+      <rect x="40" y="128" width="44" height="24" rx="4" fill="var(--ego)"/>
+      <text x="62" y="182" class="svg-label small" text-anchor="middle">ego</text>
+      <rect x="220" y="112" width="40" height="22" rx="3" fill="var(--obj)"/>
+      <rect x="330" y="134" width="40" height="22" rx="3" fill="var(--obj)"/>
+      <text x="290" y="182" class="svg-label small" text-anchor="middle">road slice</text>
+      <circle cx="520" cy="73" r="8" fill="var(--obj)"/>
+      <text x="520" y="52" class="svg-label small" text-anchor="middle">walkway slice</text>
+      <rect x="560" y="14" width="40" height="18" rx="3" fill="var(--muted)" opacity="0.5"/>
+      <text x="548" y="27" class="svg-label small" text-anchor="end">off-map → whole-scene only</text>
+      <!-- car with its center off the road but its footprint overhanging onto it → included (any overlap) -->
+      <rect x="452" y="159" width="52" height="28" rx="3" fill="var(--obj)" opacity="0.9" stroke="var(--ego)" stroke-width="2"/>
+      <line x1="444" y1="166" x2="512" y2="166" stroke="var(--ego)" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <circle cx="478" cy="173" r="3" fill="var(--danger)"/>
+      <text x="478" y="152" class="svg-label strong" fill="var(--obj)" text-anchor="middle">overhangs road → included</text>
+      <text x="478" y="207" class="svg-label small" fill="var(--muted)" text-anchor="middle">● center off-road</text>
+    </svg>
+    </div>
+    <figcaption>Objects and points are assigned to <b>road</b> (crosswalks included — cars drive there),
+    <b>walkway</b>, or the <b>union</b>, and every metric is reported per region beside the unmasked
+    whole-scene number. A detection box counts for a region when <b>any part of its footprint overlaps</b>
+    it — no threshold: the car above sits mostly off the road but overhangs it, so it is still
+    <b>included</b> even though its center is off-road.</figcaption>
+  </figure>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 660 250" width="660" height="250" role="img" aria-labelledby="fig-margin-title">
+      <title id="fig-margin-title">The border margin erodes only the outer border of the union of all mapped regions: strips along the top of the walkway and the bottom of the road are excluded, while the internal road-to-walkway border keeps its points on both sides — no dead gap between adjacent regions.</title>
+      <!-- walkway band -->
+      <rect x="10" y="50" width="640" height="42" fill="var(--accent)" opacity="0.16"/>
+      <text x="24" y="78" class="svg-label small" fill="var(--accent-text)">walkway</text>
+      <!-- road band, adjacent below -->
+      <rect x="10" y="92" width="640" height="98" fill="var(--ego)" opacity="0.14"/>
+      <text x="24" y="150" class="svg-label small" fill="var(--ego)">road</text>
+      <!-- eroded strips along the OUTER border of the union -->
+      <rect x="10" y="50" width="640" height="12" fill="var(--danger)" opacity="0.14"/>
+      <rect x="10" y="178" width="640" height="12" fill="var(--danger)" opacity="0.14"/>
+      <line x1="10" y1="62" x2="650" y2="62" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <line x1="10" y1="178" x2="650" y2="178" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="340" y="174" class="svg-label small" fill="var(--danger)" text-anchor="middle">outer border ⊖ margin (expand: false) → excluded</text>
+      <!-- internal border: intact -->
+      <line x1="10" y1="92" x2="650" y2="92" stroke="var(--ink2)" stroke-width="1.5"/>
+      <text x="340" y="110" class="svg-label small" text-anchor="middle">internal border (road ↔ walkway) — not eroded, no gap</text>
+      <!-- margin dimension bracket -->
+      <path d="M 626 178 L 634 178 L 634 190 L 626 190" fill="none" stroke="var(--danger)" stroke-width="1.5"/>
+      <text x="620" y="188" class="svg-label small" fill="var(--danger)" text-anchor="end">margin</text>
+      <!-- points: kept near the internal border, both sides -->
+      <circle cx="460" cy="87" r="5" fill="var(--obj)"/>
+      <circle cx="460" cy="98" r="5" fill="var(--obj)"/>
+      <text x="472" y="90" class="svg-label small">kept — both sides</text>
+      <!-- points: dropped inside the eroded strips -->
+      <circle cx="150" cy="56" r="5" fill="var(--obj)" opacity="0.4"/>
+      <text x="162" y="60" class="svg-label small" fill="var(--muted)">dropped</text>
+      <circle cx="150" cy="184" r="5" fill="var(--obj)" opacity="0.4"/>
+      <text x="162" y="188" class="svg-label small" fill="var(--muted)">dropped</text>
+      <!-- kept point well inside the road -->
+      <circle cx="150" cy="135" r="5" fill="var(--obj)"/>
+      <text x="162" y="139" class="svg-label small">kept</text>
+      <text x="330" y="236" class="svg-label small" text-anchor="middle">erosion applies to the union of ALL regions — never per region</text>
+    </svg>
+    </div>
+    <figcaption><code>margin</code> (default 0.0, e.g. 0.2 m) with the default <code>expand: false</code>
+    excludes the noisy strip along the <b>outer</b> border of the whole mapped surface. Because the erosion
+    is applied to the union of all regions — never per region — the internal road ↔ walkway border keeps
+    its points on both sides, and no dead gap opens between adjacent regions. With <code>expand: true</code>
+    the direction flips: the region grows outward by the margin, claiming nearby off-map points but never
+    another region's.</figcaption>
+  </figure>
+  <details>
+    <summary>Regions &amp; the math</summary>
+    <div class="body">
+      <p>A <code>RegionFilter</code> takes a list of literal lanelet2 tokens; the map provider unions every
+      lanelet (by <code>subtype</code>) and area (by <code>type</code>) whose tag is in the list into that
+      region's polygon. The presets:</p>
+      <div class="formula">road = [road, road_shoulder, crosswalk] (+ drivable_area / intersection_area / crosswalk_polygon)<br>walkway = [walkway]</div>
+      <p>A detection box belongs to a region when <em>any part</em> of its footprint overlaps it (so an
+      object overhanging from an off-region center still counts); a segmentation point by point-in-polygon:</p>
+      <div class="formula">keep(box, M) = footprint(box) ∩ M ≠ ∅ &nbsp; (any overlap)<br>cut inward (expand: false): &nbsp; keep(point, M) = point ∈ M &nbsp;∧&nbsp; point ∈ (U ⊖ margin)<br>grow outward (expand: true): &nbsp; keep(point, M) = point ∈ M &nbsp;∨&nbsp; point ∈ ((M ⊕ margin) ∖ U)</div>
+      <p><code>margin</code> (default 0.0) is a distance in meters; <code>expand</code> picks the direction
+      and defaults to <code>false</code> — cut inward. The cut removes points near the <strong>outer border
+      of the whole mapped surface U</strong> — the union of <em>all</em> regions — eroded inward by the
+      margin (e.g. 0.2 m). Border points are naturally noisy (high entropy, frequent misclassification) and
+      would otherwise dominate a region's error metrics. Crucially, the erosion is applied to the full
+      union, never per region: an internal border between adjacent regions (road ↔ walkway) is interior to
+      U and stays intact, so no dead gap appears between them — a point near that shared border keeps
+      counting for its region. With <code>expand: true</code> the selected region instead grows outward by
+      the margin, claiming only <em>off-map</em> points near it — never points inside another mapped region,
+      so adjacent regions still do not overlap.</p>
+      <p>Every metric — det3d and seg3d, all families — is then computed on each region's kept set, exactly
+      as it is per range bin. Whole-scene and every region slice are always published together
+      (see <a href="#governance">Section 11</a>).</p>
+    </div>
+  </details>
+  <details>
+    <summary>Declaring a filter in config</summary>
+    <div class="body">
+      <p>Filters are optional and hydra-instantiated — list a metric once per region you want; each filter
+      type carries its own kwargs. <code>filter: None</code> (the default) is the unchanged whole-scene metric.</p>
+      <div class="formula">- {_target_: …tp_errors.TpErrors, stages: [test]}&nbsp; # whole-scene<br>- {_target_: …tp_errors.TpErrors, stages: [test],<br>&nbsp;&nbsp; filter: {_target_: …metrics.filters.RegionFilter, region: [road, road_shoulder, crosswalk]}}<br>- {_target_: …tp_errors.TpErrors, stages: [test],<br>&nbsp;&nbsp; filter: {_target_: …metrics.filters.RegionFilter, region: [walkway]}}</div>
+      <p>The suite groups components by filter, builds one filtered sub-state per (range, filter) so the
+      shared match curves are reused, and prefixes each filtered metric's keys with the filter name
+      (<code>road/mATE_…</code>). Two metrics that differ only by filter therefore never collide.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Implementation notes</summary>
+    <div class="body">
+      <ul>
+        <li><strong>Map data is already in the dataset:</strong> gen2 scenes ship <code>map/lanelet2_map.osm</code>
+            with <code>local_x/local_y</code> node tags — already in the map frame that ego poses use, no geodetic projection needed.</li>
+        <li>Preprocess once per scene: OSM → per-region polygons (shapely) unioning lanelet relations
+            (left+right bounds) and area/polygon ways → cached <code>.npz</code>/GeoPackage, exposed as a T4Devkit accessor.</li>
+        <li>Boxes/points are in base_link → transform to the map frame with the stored ego pose;
+            <code>RegionFilter.required_eval_keys = (ego2global, scene_token)</code>, folded into the suite's fail-loud check.</li>
+        <li>Implemented once as a shared filter axis (both suites), so a new metric inherits the road /
+            walkway slices for free — never re-implemented per metric.</li>
+        <li><strong>Availability:</strong> older DBs (db_j6_v3, db_j6_v5, db_largebus_v1, …) have no
+            <code>map/</code> directory. A region filter is declared per-dataset and <strong>fails loud</strong>
+            where the map is absent — never silently collapsing to whole-scene.</li>
+        <li><strong>Caveat from real maps:</strong> <code>walkway</code> is sparse (≈1 lanelet/scene); most
+            pedestrian space is <code>crosswalk</code>, which sits in the road region — so the standalone
+            walkway slice is often near-empty by design.</li>
+      </ul>
+    </div>
+  </details>
+
+  <h3>The corridor filter</h3>
+  <p>
+    A second filter type on the same axis: <code>CorridorFilter</code> keeps only the elements in the ego's
+    <strong>reachable path</strong> — the curvature-bounded region reachable within the horizon at the max
+    map-legal speed, <strong>clipped to the road lanelets</strong>, so the
+    corridor follows the road through bends instead of shooting straight off it into off-road objects. It is
+    the ego <strong>reachable region</strong> of the one collision model (curvature-bounded, clipped to the
+    road), planner-independent — <em>not</em> the path the vehicle happened to drive
+    (<a href="#core">Section 4</a>): the driver already steered around the hazard the model missed. This is
+    the "in ego's path" slice, and like the region filter it composes with <em>any</em> metric, det3d and
+    seg3d alike: yaw error for in-path objects, mAP in the corridor, segmentation IoU / error clusters /
+    uncertainty on the road ahead. It is the filter form of the same corridor B1 uses; where B1 is a dedicated
+    critical-FP/FN curve, the corridor <em>filter</em> lets every other metric be reported in-path too.
+  </p>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 660 220" width="660" height="220" role="img" aria-labelledby="fig-corridor-title">
+      <title id="fig-corridor-title">Bird's-eye view: the corridor is the ego reachable region — everything reachable within the horizon at the lane speed limit under bounded steering, hard-clipped to the road; an object inside is kept, one off the road or beyond reach is dropped.</title>
+      <defs><clipPath id="corridor-clip"><rect x="8" y="70" width="644" height="84"/></clipPath></defs>
+      <rect x="8" y="34" width="644" height="36" fill="var(--chip-bg)" opacity="0.55"/>
+      <text x="16" y="28" class="svg-label small">sidewalk</text>
+      <rect x="8" y="70" width="644" height="84" rx="6" fill="var(--chip-bg)"/>
+      <text x="644" y="148" class="svg-label small" text-anchor="end">road (drivable)</text>
+      <!-- reachable region drawn extending off-road, then hard-clipped to the road -->
+      <g clip-path="url(#corridor-clip)">
+        <path d="M 86 112 C 146 112 196 62 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218 C 196 162 146 112 86 112 Z" fill="var(--ego)" opacity="0.16"/>
+        <path d="M 86 112 C 146 112 196 62 206 6" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 86 112 C 146 112 196 162 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>
+      </g>
+      <rect x="40" y="100" width="46" height="24" rx="4" fill="var(--ego)"/>
+      <text x="63" y="94" class="svg-label strong" text-anchor="middle">ego</text>
+      <!-- object inside the region -->
+      <rect x="268" y="102" width="40" height="20" rx="3" fill="var(--obj)"/>
+      <text x="288" y="96" class="svg-label strong" fill="var(--obj)" text-anchor="middle">in path → kept</text>
+      <!-- object on the sidewalk (region is clipped there) -->
+      <rect x="268" y="42" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
+      <text x="366" y="56" class="svg-label small" fill="var(--muted)">off road → dropped</text>
+      <!-- object beyond the horizon reach -->
+      <rect x="560" y="102" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
+      <text x="580" y="172" class="svg-label small" fill="var(--muted)" text-anchor="middle">beyond reach → dropped</text>
+      <text x="150" y="206" class="svg-label small">lane speed limit + tightest feasible turn, clipped at the road edge</text>
+    </svg>
+    </div>
+    <figcaption>The corridor is the ego's <b>reachable region</b> on the <b>road lanelets</b> (curvature-bounded,
+    clipped to the road). Any metric restricted to this filter reports only objects
+    in ego's path, independent of how the vehicle was actually driven.</figcaption>
+  </figure>
+  <details>
+    <summary>The math &amp; config</summary>
+    <div class="body">
+      <p>Corridor C = the ego reachable region of the one collision model (<a href="#core">Section 4</a>):
+      the curvature-bounded set reachable within the horizon T at the max map-legal speed, clipped to the
+      road lanelets. An element is kept when it lies in C — equivalently, when its reachability TTC ≤ T:</p>
+      <div class="formula">keep(e) = TTC(e) ≤ T &nbsp; (e in ego's reachable region on the road)</div>
+      <div class="formula">filter: {_target_: …metrics.filters.CorridorFilter, map_provider: …, region: [road, road_shoulder, crosswalk], horizon_s: 4.0}</div>
+      <p>It needs the current ego pose (<code>ego2global</code>) and the scene's lanelet map. No recorded
+      future and no observed agent velocity enter — the region is the worst-case reachable set on the road.</p>
+    </div>
+  </details>
+
+  <h3>The range filter (distance bins)</h3>
+  <p>
+    Every metric is <em>also</em> reported per distance ring around the ego, because a model that wins
+    overall can still regress far away where points are sparse. This is not a pluggable
+    <code>MetricFilter</code> but the suite's built-in radial windowing: a metric is computed once whole-area
+    and once per <code>MetricRange</code>, its key suffixed with the band. The bands used here are
+    <strong>0–50 m</strong>, <strong>50–90 m</strong>, <strong>90–121 m</strong>, and the full
+    <strong>0–121 m</strong>. Distance is the horizontal (BEV) range from the ego, so it composes with the
+    region and corridor filters: e.g. "road, 50–90 m" is one slice.
+  </p>
+  <div class="formula">ranges: [{name: 0-50m, 0.0, 50.0}, {name: 50-90m, 50.0, 90.0}, {name: 90-121m, 90.0, 121.0}, {name: 0-121m, 0.0, 121.0}]</div>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="classes">
+  <div class="sec-label">Section 6</div>
+  <h2>Classes and taxonomy</h2>
+  <p>
+    Detection and segmentation are trained and scored over fixed class sets, mapped from the raw T4
+    annotation names at data-load time by an explicit <code>name_mapping</code> (raw&nbsp;→&nbsp;final class;
+    a category left unmapped or set to <code>null</code> is ignored, so a dataset's extra categories never
+    break loading). Every per-class metric in the catalog is reported over these classes and, in parallel,
+    over the <strong>behaviour taxonomy</strong> that folds them into driving-equivalent groups.
+  </p>
+  <div class="cards two" style="margin:14px 0;">
+    <div class="card">
+      <h3>det3d — 13 classes</h3>
+      <p style="font-size:0.9rem;"><code>car</code> · <code>truck</code> · <code>bus</code> · <code>train</code> ·
+      <code>motorcycle</code> · <code>bicycle</code> · <code>pedestrian</code> · <code>animal</code> ·
+      <code>barrier</code> · <code>traffic_cone</code> · <code>debris</code> · <code>bicycle_rack</code> ·
+      <code>vehicle_extension</code>.</p>
+      <p style="font-size:0.9rem; color:var(--ink2);">Representative folds at load: emergency / forklift / kart
+      / police / ambulance → car; construction / tractor / fire-truck → truck; <code>pushable_pullable</code>
+      → debris; open-door / protruding object → <code>vehicle_extension</code>; the pedestrian sub-types →
+      pedestrian. <code>trailer</code> is geometrically merged into its towing <code>truck</code>. Boxes are
+      filtered by point count and per-class eval range before scoring.</p>
+    </div>
+    <div class="card">
+      <h3>seg3d — 20 classes</h3>
+      <p style="font-size:0.9rem;">the 13 detection classes, plus <code>drivable_flat</code> ·
+      <code>non_drivable_flat</code> · <code>vegetation</code> · <code>building</code> ·
+      <code>vertical_thin</code> · <code>static_clutter</code> · <code>noise</code>.</p>
+      <p style="font-size:0.9rem; color:var(--ink2);">Surface / structure folds: drivable-surface / drainage →
+      drivable_flat; sidewalk / curbs / other-flat → non_drivable_flat; poles / lights / signs / bollards /
+      flags → vertical_thin; manmade → building; solid- / other-stuff → static_clutter; noise / ghost-point →
+      noise. <code>background</code>, <code>ego_vehicle</code>, <code>out_of_sync</code> and
+      <code>unpainted</code> map to the ignore index and are excluded everywhere.</p>
+    </div>
+  </div>
+
+  <h3 id="taxonomy">The behaviour taxonomy</h3>
+  <p>
+    Not every misclassification changes how the vehicle drives. A bus predicted as a truck is still a large
+    vehicle to yield to; a stroller predicted as a pedestrian is still a vulnerable road user. So every
+    metric is reported over <strong>two class taxonomies</strong>, and the taxonomy is a report axis exactly
+    like the region, corridor and distance axes above:
+  </p>
+  <ul style="font-size:0.92rem; color:var(--ink2);">
+    <li><strong>Per class</strong> — every trained class scored on its own; a car read as a truck is a
+        false positive for one and a false negative for the other. The strict view the model is optimised
+        against.</li>
+    <li><strong>Behaviour groups</strong> — classes whose confusion does not change the driving decision are
+        folded into one group, so intra-group confusion becomes a true positive. It isolates "did the model
+        see the <em>kind</em> of thing that matters" from "did it name it exactly".</li>
+  </ul>
+  <p>
+    A single <code>class_groups</code> key declares the taxonomy — a full partition of the trained classes,
+    each group named with a <code>grouped_</code> prefix (even singletons such as
+    <code>grouped_debris</code>, so a group name is always unambiguous):
+  </p>
+  <div class="formula">class_groups:&nbsp;&nbsp;# seg3d<br>&nbsp;&nbsp;grouped_vehicle: [car, truck, bus, train, vehicle_extension]<br>&nbsp;&nbsp;grouped_structure: [building, vertical_thin, bicycle_rack]<br>&nbsp;&nbsp;grouped_flat: [drivable_flat, non_drivable_flat]</div>
+  <ul style="font-size:0.92rem; color:var(--ink2);">
+    <li><strong>Always a replace, never additive.</strong> When a suite is built with
+        <code>class_groups</code>, labels are relabeled to their group and scores are marginalized (summed
+        over members) <em>before</em> the metric runs, so the group takes the members' place everywhere —
+        per-class rows and aggregates (mIoU, accuracy, mAP) alike.</li>
+    <li><strong>The suite runs twice, not the metric.</strong> Each suite is instantiated once per-class and
+        once grouped (a distinct <code>_grouped</code> logging prefix), so the two taxonomies never collide
+        in the key namespace. Duplicating the suite keeps each pass a straight, single-taxonomy computation.</li>
+    <li><strong>Filters first, fold second.</strong> The ground-truth filters (point count, range) act on
+        the trained classes; the fold happens afterwards, at metric time — so the two taxonomies count the
+        same objects and points, only labelled at a different granularity.</li>
+    <li><strong>Full partition, forward-compatible.</strong> The groups must cover <em>every</em> trained
+        class (an unassigned class fails loud). A member that is not currently trained is simply skipped, so
+        a group can name a class the model will only learn later without breaking the current run.</li>
+  </ul>
+  <p>The taxonomies used for the two tasks:</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>det3d group (6)</th><th>trained classes folded in</th></tr></thead>
+      <tbody>
+        <tr><td><code>grouped_vehicle</code></td><td>car · truck · bus · train · vehicle_extension</td></tr>
+        <tr><td><code>grouped_two_wheeler</code></td><td>motorcycle · bicycle</td></tr>
+        <tr><td><code>grouped_pedestrian_animal</code></td><td>pedestrian · animal</td></tr>
+        <tr><td><code>grouped_static_obstacle</code></td><td>barrier · traffic_cone</td></tr>
+        <tr><td><code>grouped_debris</code></td><td>debris</td></tr>
+        <tr><td><code>grouped_structure</code></td><td>bicycle_rack</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>seg3d group (10)</th><th>trained classes folded in</th></tr></thead>
+      <tbody>
+        <tr><td><code>grouped_vehicle</code></td><td>car · truck · bus · train · vehicle_extension</td></tr>
+        <tr><td><code>grouped_two_wheeler</code></td><td>motorcycle · bicycle</td></tr>
+        <tr><td><code>grouped_pedestrian_animal</code></td><td>pedestrian · animal</td></tr>
+        <tr><td><code>grouped_static_obstacle</code></td><td>barrier · traffic_cone</td></tr>
+        <tr><td><code>grouped_debris</code></td><td>debris</td></tr>
+        <tr><td><code>grouped_static_clutter</code></td><td>static_clutter</td></tr>
+        <tr><td><code>grouped_flat</code></td><td>drivable_flat · non_drivable_flat</td></tr>
+        <tr><td><code>grouped_vegetation</code></td><td>vegetation</td></tr>
+        <tr><td><code>grouped_structure</code></td><td>building · vertical_thin · bicycle_rack</td></tr>
+        <tr><td><code>grouped_noise</code></td><td>noise</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:0.9rem; color:var(--ink2);">
+    Member names are the final class names; an unknown name fails loud, listing the valid ones. Detection
+    folds label tensors before matching (a bus box matched to a truck box is a hit for
+    <code>grouped_vehicle</code>); segmentation folds the confusion matrix and the cached point labels.
+  </p>
+</section>
+
+<!-- ============================================================ 7 -->
+<section id="catalog">
+  <div class="sec-label">Section 7</div>
+  <h2>Metric catalog</h2>
+  <p>
+    One page per metric. The plain-language part is for everyone; expand
+    <strong>“The math”</strong> and <strong>“Implementation notes”</strong> if you build it.
+  </p>
+
+  <!-- ================= A1 ================= -->
+  <article class="metric" id="m-a1">
+    <div class="metric-head">
+      <span class="metric-id">A1</span>
+      <h3>Corner displacement error (combined)</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Position, size and yaw errors interact — a box can have a perfect center and still put its corners
+      in the wrong lane. Corner displacement folds all three into one number in meters, measured where
+      planning collides with things: the box outline. It is the combined true-positive geometry metric — a
+      3° yaw error on a 20 m truck shifts a corner ~0.5 m, and that shows up here directly, no separate yaw
+      statistic needed. Center-distance matching is also blind to footprint inflation — an oversized box
+      scores the same as a tight one; corner distance penalizes it. The one thing it deliberately forgives
+      is a 180° heading flip (the outline barely moves) — <a href="#m-a2">A2</a> catches that separately.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 180" width="560" height="180" role="img" aria-labelledby="fig3-title">
+        <title id="fig3-title">A ground-truth truck box and a predicted box rotated by a few degrees share a center, but the corners are displaced by half a meter.</title>
+        <g transform="translate(280 95)">
+          <rect x="-150" y="-30" width="300" height="60" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+          <rect x="-150" y="-30" width="300" height="60" rx="3" fill="var(--obj)" opacity="0.13" transform="rotate(8)"/>
+          <rect x="-150" y="-30" width="300" height="60" rx="3" fill="none" stroke="var(--obj)" stroke-width="2" transform="rotate(8)"/>
+          <!-- corner displacement arrow: GT corner (150,-30) vs pred corner rotated 8deg -->
+          <circle cx="150" cy="-30" r="3.5" fill="var(--ink2)"/>
+          <circle cx="152.7" cy="-8.8" r="3.5" fill="var(--obj)"/>
+          <path d="M 150 -30 L 152.7 -8.8" stroke="var(--danger)" stroke-width="2.5"/>
+          <text x="176" y="-16" class="svg-label strong">δ ≈ 0.5 m</text>
+        </g>
+        <text x="130" y="40" class="svg-label small">ground truth (dashed)</text>
+        <text x="330" y="168" class="svg-label small">prediction, 3° yaw error — angle exaggerated for visibility</text>
+      </svg>
+      </div>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>For a matched pair, take the four BEV corners of each box with the cyclic corner assignment
+        that minimizes the sum of distances (so a 90°-symmetric parameterization is not unfairly punished):</p>
+        <div class="formula">CDE = (1/4) · Σ<sub>i=1..4</sub> ‖ c_pred,(i+k*) − c_gt,i ‖ , &nbsp; k* = argmin<sub>k∈{0..3}</sub> Σ ‖·‖</div>
+        <p>Reported per class × range bin: mean / p95 / max. Corner-shift intuition for a length-L object
+        under small yaw error δ (radians):</p>
+        <div class="formula">corner shift ≈ (L / 2) · δ &nbsp;&nbsp;→&nbsp;&nbsp; L = 20 m, δ = 3° : ≈ 0.52 m</div>
+        <p><strong>Corner matching mode:</strong> additionally, AP can be computed with mean corner distance
+        as the match cost instead of center distance (adopted from arXiv 2507.00190). Same thresholds
+        {0.5, 1, 2, 4} m; a configuration flag, not a separate implementation.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Corner math is shared with A3 and the export-side box utilities — one geometry helper, used by all.</li>
+          <li>Matching-mode flag extends the existing center-distance matcher; both modes share the PR-curve machinery.</li>
+          <li>APE already supports pluggable matching modes — add corner distance as a fifth mode with identical spec.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= A2 ================= -->
+  <article class="metric" id="m-a2">
+    <div class="metric-head">
+      <span class="metric-id">A2</span>
+      <h3>Heading-flip rate</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      A 180° heading flip leaves the box outline almost unchanged, so A1 forgives it — but it inverts the
+      object's velocity direction and is a prime cause of tracking failures. A2 isolates exactly that: any
+      true positive whose heading error passes a quarter turn counts as one flip — a uniform +1, however far
+      past 90°, because a wrong-way heading is wrong-way regardless of degree.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 170" width="560" height="170" role="img" aria-labelledby="fig-flip-title">
+        <title id="fig-flip-title">A ground-truth box and a predicted box that share the same outline but point in opposite directions: corner displacement is near zero, yet the heading is reversed, so it counts as one flip.</title>
+        <g transform="translate(210 80)">
+          <rect x="-70" y="-24" width="140" height="48" rx="4" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+          <rect x="-70" y="-24" width="140" height="48" rx="4" fill="var(--obj)" opacity="0.10"/>
+          <rect x="-70" y="-24" width="140" height="48" rx="4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          <line x1="0" y1="0" x2="60" y2="0" stroke="var(--ink2)" stroke-width="2"/>
+          <path d="M 52 -6 L 60 0 L 52 6" fill="none" stroke="var(--ink2)" stroke-width="2"/>
+          <text x="78" y="-30" class="svg-label small" fill="var(--ink2)">GT heading →</text>
+          <line x1="0" y1="12" x2="-60" y2="12" stroke="var(--obj)" stroke-width="2"/>
+          <path d="M -52 6 L -60 12 L -52 18" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          <text x="-78" y="34" class="svg-label small" fill="var(--obj)" text-anchor="end">prediction ← reversed</text>
+        </g>
+        <text x="210" y="150" class="svg-label small" text-anchor="middle">same outline → corner error ≈ 0</text>
+        <text x="440" y="80" class="svg-label strong" fill="var(--danger)" text-anchor="middle">heading reversed</text>
+        <text x="440" y="98" class="svg-label strong" fill="var(--danger)" text-anchor="middle">→ flip +1</text>
+      </svg>
+      </div>
+      <figcaption>The reversal A1 cannot see: outline unchanged (corner error ≈ 0) but the heading is
+      inverted — counted here as one flip.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>Over the true positives at the TP threshold, with the wrapped yaw error Δψ = |wrap(ψ_pred − ψ_gt)| ∈ [0, π]:</p>
+        <div class="formula">flip_rate = #(TP with Δψ &gt; π/2) / #TP , &nbsp; each flip contributes a uniform +1</div>
+        <p>Reported per class × range bin as the flip rate and the raw flip count; the penalty is a step at
+        90°, so 91° and 179° weigh the same. π/2 is the spec-versioned threshold.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Reads <code>orientation_error</code> from the shared match curve — no new matching, pairs with A1.</li>
+          <li>Same yaw convention as APH, so the two heading signals stay consistent.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= A3 ================= -->
+  <article class="metric" id="m-a3">
+    <div class="metric-head">
+      <span class="metric-id">A3</span>
+      <h3>Signed nearest-surface error</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Stopping distance is computed against the <em>nearest face</em> of an object, not its center.
+      The same 1 m center error is harmless if the box is too long at the back, and dangerous if the
+      near face is placed 1 m too far away — ego brakes late. The sign of this error is the safety signal.
+      The measure is <b>radial</b> — the distance from the ego origin to the nearest point of the box
+      footprint — so it applies to objects in any direction (beside and behind, not only ahead); the figure
+      shows an object in front for clarity.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 620 150" width="620" height="150" role="img" aria-labelledby="fig4-title">
+        <title id="fig4-title">Ego on the left; the predicted box places the near face farther than ground truth, producing a positive error that means braking later.</title>
+        <rect x="20" y="58" width="44" height="24" rx="4" fill="var(--ego)"/>
+        <text x="42" y="50" class="svg-label strong" text-anchor="middle">ego</text>
+        <!-- GT box -->
+        <rect x="380" y="52" width="120" height="36" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+        <!-- pred box -->
+        <rect x="424" y="52" width="120" height="36" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+        <!-- dimension lines -->
+        <path d="M 64 106 L 380 106" stroke="var(--ink2)" stroke-width="1.5"/>
+        <path d="M 64 100 L 64 112 M 380 100 L 380 112" stroke="var(--ink2)" stroke-width="1.5"/>
+        <text x="222" y="122" class="svg-label small" text-anchor="middle">d_gt (dashed = ground truth near face)</text>
+        <path d="M 64 30 L 424 30" stroke="var(--obj)" stroke-width="1.5"/>
+        <path d="M 64 24 L 64 36 M 424 24 L 424 36" stroke="var(--obj)" stroke-width="1.5"/>
+        <text x="244" y="22" class="svg-label small" text-anchor="middle">d_pred (predicted near face)</text>
+        <text x="560" y="74" class="svg-label strong" fill="var(--danger)">err &gt; 0</text>
+        <text x="560" y="92" class="svg-label small">= brakes late</text>
+      </svg>
+      </div>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <div class="formula">err_ns = d_pred − d_gt , &nbsp; d = distance from ego origin to the nearest point of the BEV box outline</div>
+        <p>Positive = predicted farther than reality → <strong>late braking</strong> (safety).
+           Negative = predicted nearer → over-caution (usability). Reported per class × range bin as
+           signed tails: p5 / p95 / max|·|, plus the mean.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Reuses A1's corner/outline geometry helper; nearest point on a rectangle is closed-form.</li>
+          <li>In APE, align the definition with the existing plane-distance matcher so numbers are mutually interpretable — one shared definition of “near face”.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= B1 ================= -->
+  <article class="metric" id="m-b1">
+    <div class="metric-head">
+      <span class="metric-id">B1</span>
+      <h3>Critical FP / FN curves (ego corridor)</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Two numbers we never average: false positives <em>in ego's path</em> cause phantom braking
+      (usability); false negatives <em>in ego's path</em> mean driving toward something we can't see
+      (safety). "Critical" is the one reachability model (<a href="#core">Section 4</a>): an object is
+      critical when it <strong>can collide with ego within the horizon</strong> — its reachable-at-<em>t</em>
+      set meets ego's at some t ≤ T, i.e. TTC ≤ T. That covers an object standing in the path, a crossing
+      pedestrian and an oncoming vehicle, while a same-speed lead is excluded. Both are reported as curves
+      over the confidence threshold — release engineering picks a threshold and needs to know if <em>any</em>
+      threshold is acceptable on both axes at once.
+    </p>
+    <p style="font-size:0.9rem; color:var(--ink2);">
+      Reported <b>per class</b> (and per behaviour group), because a missed pedestrian is not a missed cone —
+      the counts are broken down so the safety-critical classes stand on their own. Matching is
+      <em>class-agnostic</em> (nearest box within the threshold, any class), so an object detected as the
+      <em>wrong</em> class still counts as detected — it does not become a critical FN. That mislabelling is
+      captured by the <a href="#m-f1">confusion matrix (F1)</a>, not here; B1 answers only "is there a box in
+      the path at all".
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 232" width="660" height="232" role="img" aria-labelledby="fig-b1-scene-title">
+        <title id="fig-b1-scene-title">Two bird's-eye scenes. Left: a predicted box sits in the ego path with no real object there, so ego brakes for a ghost — a false positive, a usability failure. Right: a real object sits in the ego path but the model missed it, so ego drives into it — a false negative, a safety failure.</title>
+        <!-- ===== Panel A: phantom brake (FP) ===== -->
+        <rect x="8" y="8" width="310" height="216" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="163" y="32" class="svg-label strong" text-anchor="middle">Phantom brake — false positive</text>
+        <rect x="22" y="112" width="288" height="44" rx="10" fill="var(--ego)" opacity="0.14"/>
+        <text x="270" y="103" class="svg-label small" text-anchor="middle">ego path →</text>
+        <!-- skid marks + ego stopped short -->
+        <line x1="14" y1="126" x2="32" y2="126" stroke="var(--danger)" stroke-width="2.5"/>
+        <line x1="14" y1="150" x2="32" y2="150" stroke="var(--danger)" stroke-width="2.5"/>
+        <rect x="34" y="120" width="42" height="28" rx="4" fill="var(--ego)"/>
+        <text x="55" y="176" class="svg-label small" text-anchor="middle">ego brakes</text>
+        <!-- phantom prediction, no GT -->
+        <rect x="198" y="118" width="46" height="32" rx="3" fill="var(--obj)" opacity="0.14"/>
+        <rect x="198" y="118" width="46" height="32" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+        <text x="221" y="110" class="svg-label small" fill="var(--obj)" text-anchor="middle">predicted box</text>
+        <text x="221" y="176" class="svg-label small" text-anchor="middle">no real object</text>
+        <text x="163" y="210" class="svg-label small" fill="var(--obj)" text-anchor="middle">FP in path → phantom brake (usability)</text>
+        <!-- ===== Panel B: collision (FN) ===== -->
+        <rect x="342" y="8" width="310" height="216" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="497" y="32" class="svg-label strong" text-anchor="middle">Collision — false negative</text>
+        <rect x="356" y="112" width="288" height="44" rx="10" fill="var(--ego)" opacity="0.14"/>
+        <text x="604" y="103" class="svg-label small" text-anchor="middle">ego path →</text>
+        <rect x="366" y="120" width="42" height="28" rx="4" fill="var(--ego)"/>
+        <text x="387" y="176" class="svg-label small" text-anchor="middle">ego (no brake)</text>
+        <!-- ego drives on into the unseen object -->
+        <line x1="410" y1="134" x2="512" y2="134" stroke="var(--danger)" stroke-width="2" stroke-dasharray="6 4"/>
+        <path d="M 505 129 L 513 134 L 505 139" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <!-- real GT object, missed (dashed ink) -->
+        <rect x="520" y="118" width="34" height="32" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+        <text x="537" y="110" class="svg-label small" text-anchor="middle">real object (GT)</text>
+        <text x="537" y="176" class="svg-label small" fill="var(--danger)" text-anchor="middle">model saw nothing</text>
+        <!-- collision spark at the near face -->
+        <g stroke="var(--danger)" stroke-width="2">
+          <line x1="520" y1="134" x2="506" y2="122"/>
+          <line x1="520" y1="134" x2="502" y2="134"/>
+          <line x1="520" y1="134" x2="506" y2="146"/>
+          <line x1="520" y1="134" x2="512" y2="118"/>
+          <line x1="520" y1="134" x2="512" y2="150"/>
+        </g>
+        <text x="497" y="210" class="svg-label small" fill="var(--danger)" text-anchor="middle">FN in path → collision (safety)</text>
+      </svg>
+      </div>
+      <figcaption>The two failures a single mAP number blurs together: a false positive in the path is a
+      phantom brake (usability), a false negative in the path is a collision (safety) — opposite costs, never
+      averaged.</figcaption>
+    </figure>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 250" width="560" height="250" role="img" aria-labelledby="fig-b2-title">
+        <title id="fig-b2-title">Two curves over the confidence threshold: false positives in the corridor fall as the threshold rises while false negatives rise; both are read at the release operating point.</title>
+        <line x1="70" y1="30" x2="70" y2="200" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="70" y1="200" x2="500" y2="200" stroke="var(--line)" stroke-width="1.5"/>
+        <polyline fill="none" stroke="var(--obj)" stroke-width="2.5"
+          points="70,50 140,78 210,108 280,132 350,152 420,166 500,176"/>
+        <polyline fill="none" stroke="var(--ego)" stroke-width="2.5"
+          points="70,182 140,176 210,164 280,146 350,120 420,88 500,56"/>
+        <line x1="340" y1="36" x2="340" y2="200" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <circle cx="340" cy="149" r="5" fill="var(--obj)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="340" cy="124" r="5" fill="var(--ego)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="348" y="26" class="svg-label small">release operating point</text>
+        <text x="78" y="48" class="svg-label" fill="var(--obj)">FP in corridor — phantom brake</text>
+        <text x="78" y="62" class="svg-label small" fill="var(--obj)">(usability)</text>
+        <text x="492" y="48" class="svg-label" fill="var(--ego)" text-anchor="end">FN in corridor — missed object</text>
+        <text x="492" y="62" class="svg-label small" fill="var(--ego)" text-anchor="end">(safety)</text>
+        <text x="285" y="226" class="svg-label" text-anchor="middle">confidence threshold τ →</text>
+        <text x="26" y="115" class="svg-label" text-anchor="middle" transform="rotate(-90 26 115)">errors / frame</text>
+      </svg>
+      </div>
+      <figcaption>The two curves move in opposite directions — that is why they are never merged into one
+      score. Release engineering reads both at the chosen operating point.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>An object is <em>critical</em> when its reachability TTC to ego is within the horizon
+        (<a href="#core">Section 4</a>): <code>TTC(x) ≤ T</code>, T = 4 s. For each confidence threshold τ:</p>
+        <div class="formula">critical(x) = TTC(x) ≤ T<br>FP_crit(τ) = #(unmatched predictions ≥ τ that are critical) / frame<br>FN_crit(τ) = #(unmatched GT that are critical) / frame</div>
+        <p>Published as two curves plus their values at the release operating point. Never combined into one
+        score: one axis is usability (可用性), the other is safety (安全性).</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Shares the one reachability engine with B2 — the per-object TTC is computed once per frame and both read it.</li>
+          <li>In APE online mode ego's future comes from the planned trajectory instead of the reachable set; same code path via the ego-future provider (Section 4).</li>
+          <li>Reported per class; pedestrian FN-in-corridor is the headline safety number.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= B2 ================= -->
+  <article class="metric" id="m-b2">
+    <div class="metric-head">
+      <span class="metric-id">B2</span>
+      <h3>Collision-risk-weighted mAP</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      The flagship metric: every object's contribution to precision and recall is weighted by how soon it
+      could collide with ego, from the one reachability model (<a href="#core">Section 4</a>). An object that
+      cannot be reached within the horizon weighs ≈ 0 — so a same-speed lead, or scenery off the road, no
+      longer buys score, while an imminent, in-path object dominates it.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 250" width="560" height="250" role="img" aria-labelledby="fig5-title">
+        <title id="fig5-title">Exponential decay of the collision-risk weight over time-to-collision across the four-second horizon, with labeled points at 1, 2 and 4 seconds.</title>
+        <line x1="70" y1="20" x2="70" y2="200" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="70" y1="200" x2="530" y2="200" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="70" y1="30.8" x2="530" y2="30.8" stroke="var(--line)" stroke-width="1" opacity="0.5"/>
+        <line x1="70" y1="115.4" x2="530" y2="115.4" stroke="var(--line)" stroke-width="1" opacity="0.5"/>
+        <text x="62" y="35" class="svg-label small" text-anchor="end">1.0</text>
+        <text x="62" y="120" class="svg-label small" text-anchor="end">0.5</text>
+        <text x="62" y="205" class="svg-label small" text-anchor="end">0.0</text>
+        <text x="70" y="220" class="svg-label small" text-anchor="middle">0</text>
+        <text x="185" y="220" class="svg-label small" text-anchor="middle">1</text>
+        <text x="300" y="220" class="svg-label small" text-anchor="middle">2</text>
+        <text x="415" y="220" class="svg-label small" text-anchor="middle">3</text>
+        <text x="530" y="220" class="svg-label small" text-anchor="middle">4</text>
+        <text x="300" y="242" class="svg-label" text-anchor="middle">TTC (seconds) — horizon T = 4 s</text>
+        <text x="24" y="110" class="svg-label" text-anchor="middle" transform="rotate(-90 24 110)">weight w</text>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2.5"
+          points="70,30.8 127.5,68.2 185,97.3 242.5,120.1 300,137.7 357.5,151.4 415,162.3 472.5,170.6 530,177.2"/>
+        <circle cx="185" cy="97.3" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="300" cy="137.7" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="530" cy="177.2" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="196" y="92" class="svg-label strong">0.61</text>
+        <text x="310" y="133" class="svg-label strong">0.37</text>
+        <text x="512" y="172" class="svg-label strong" text-anchor="end">0.14</text>
+      </svg>
+      </div>
+      <figcaption>w(o) = e<sup>−λ·TTC(o)</sup> with λ = 0.5 (spec-versioned), over the horizon T = 4 s. An
+      object that cannot be reached within T has TTC = ∞ → weight ≈ 0.</figcaption>
+    </figure>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 232" width="660" height="232" role="img" aria-labelledby="fig-b2-scene-title">
+        <title id="fig-b2-scene-title">Bird's-eye view: ego on a two-lane road. An oncoming vehicle closes fast (low time-to-collision, high weight); a lead vehicle at the same speed can never be caught (infinite time-to-collision, weight zero).</title>
+        <text x="330" y="24" class="svg-label strong" text-anchor="middle" fill="var(--accent-text)">weight follows reachability TTC — not distance</text>
+        <!-- road, two lanes -->
+        <rect x="16" y="70" width="628" height="104" rx="6" fill="var(--chip-bg)"/>
+        <line x1="16" y1="122" x2="644" y2="122" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.5"/>
+        <!-- ego, lower lane, heading right -->
+        <rect x="30" y="136" width="46" height="26" rx="4" fill="var(--ego)"/>
+        <text x="53" y="184" class="svg-label small" text-anchor="middle">ego →</text>
+        <!-- oncoming vehicle, upper lane, heading left toward ego -->
+        <rect x="360" y="84" width="44" height="24" rx="4" fill="var(--obj)"/>
+        <path d="M 356 96 L 300 96" stroke="var(--danger)" stroke-width="2"/>
+        <path d="M 308 90 L 298 96 L 308 102" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <text x="382" y="66" class="svg-label small" text-anchor="middle">oncoming</text>
+        <rect x="430" y="82" width="16" height="30" rx="3" fill="var(--code-bg)"/>
+        <rect x="430" y="82" width="16" height="18.3" rx="3" fill="var(--accent)"/>
+        <text x="438" y="126" class="svg-label small" text-anchor="middle">TTC≈1 s · w 0.61</text>
+        <!-- lead vehicle, same lane as ego, same speed, heading right (away) -->
+        <rect x="470" y="136" width="44" height="26" rx="4" fill="var(--obj)"/>
+        <path d="M 518 149 L 566 149" stroke="var(--muted)" stroke-width="2"/>
+        <path d="M 558 143 L 568 149 L 558 155" fill="none" stroke="var(--muted)" stroke-width="2"/>
+        <text x="492" y="184" class="svg-label small" text-anchor="middle">lead, same speed</text>
+        <rect x="590" y="136" width="16" height="30" rx="3" fill="var(--code-bg)"/>
+        <text x="598" y="182" class="svg-label small" text-anchor="middle">TTC ∞ · w 0</text>
+      </svg>
+      </div>
+      <figcaption>The weight tracks reachability, not range: the oncoming vehicle closes within the horizon
+      (high weight), while the equally-close lead moving at ego's speed can never be caught (TTC = ∞, weight
+      0). A detection error on the lead is not inflated just because it is nearby.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p><strong>TTC</strong> comes straight from the reachability model (<a href="#core">Section 4</a>):
+        ego and the object are each propagated at their class's maximum map-legal speed — ego and wheeled
+        agents as curvature-bounded fronts clipped to the drivable area, VRUs as isotropic discs, static
+        objects as their footprint. TTC is the earliest time <em>t</em> at which the two reachable-at-<em>t</em>
+        sets overlap, else ∞. Two steps: reject cheaply if the sets cannot meet within T, otherwise step
+        <em>t</em> up and return the first overlap.</p>
+        <div class="formula">w(o) = e^(−λ · TTC(o)) , &nbsp; λ = 0.5, &nbsp; T = 4 s &nbsp; (spec-versioned)</div>
+        <p><strong>Weighted PR:</strong> each TP/FN contributes the weight of its GT object; each FP the weight
+        computed from its own predicted state (class, pose). Weighted precision/recall → weighted AP, per
+        class, per range bin.</p>
+        <div class="formula">precision_w(τ) = Σ_TP w / (Σ_TP w + Σ_FP w) , &nbsp; recall_w(τ) = Σ_TP w / Σ_GT w</div>
+        <p><strong>Dropped by design:</strong> the DTT (distance-to-trajectory) factor — superseded by
+        range-binned reporting of the TTC-weighted score, which matches our existing range-bin machinery.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Shares the one reachability engine with B1 — the per-object TTC is computed once per frame (map
+              frame, drivable polygon from the lanelet map) and both metrics read it.</li>
+          <li>FP weighting propagates the prediction's own state under the same rule — a phantom that could
+              reach ego is weighted like a real object there, which is the point (phantom braking).</li>
+          <li>Ego and wheeled agents take the <b>lanelet <code>speed_limit</code></b> at their position (from the
+              map, km/h → m/s), falling back to a spec-versioned constant off-map; VRUs use a per-class run
+              speed. The turn radius is friction-limited, R = v²/a<sub>lat</sub>.</li>
+          <li>Always published alongside the unweighted mAP (Section 11). A weighted-only report is not valid.</li>
+          <li>Weight and TTC per object are exported into the eval-output artifacts so per-scene debugging can
+              rank the costliest errors.</li>
+        </ul>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>The provider needs only the current state plus dynamic bounds — per-class maximum acceleration
+              and speed cap, and the lane speed limit for ego; it does not depend on any observed velocity.</li>
+          <li>FP weighting propagates the prediction's own state under the same worst-case rule — a phantom that
+              could reach ego's path is weighted like a real object there, which is exactly the point (phantom braking).</li>
+          <li>Always published alongside the unweighted mAP (Section 11). A weighted-only report is not a valid report.</li>
+          <li>Weight and TTC per object are exported into the eval-output artifacts so per-scene debugging can rank the costliest errors.</li>
+          <li>APE consumes the same shared metric core (parity rules in Section 4); online mode swaps only the ego-future provider.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+
+  <!-- ================= B3 ================= -->
+  <article class="metric" id="m-b3">
+    <div class="metric-head">
+      <span class="metric-id">B3</span>
+      <h3>Occlusion-aware recall split</h3>
+      <span class="chip repo-aml">AML</span><span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      A miss on an object with no LiDAR return is a physics problem; a miss on a visible object is a model
+      problem. The same detection suite is run twice with different ground-truth point-count floors — the
+      <b>visible</b> split keeps GT with ≥ 1 LiDAR point, the <b>overall</b> split keeps everything including
+      fully occluded boxes — and the gap between their recalls isolates the occlusion effect from genuine
+      detection failures.
+    </p>
+    <details>
+      <summary>Definition &amp; implementation</summary>
+      <div class="body">
+        <ul>
+          <li>Two extra suite instances (<code>det3d_visible</code>, <code>det3d_overall</code>) differing only
+              in <code>min_num_points</code> (1 vs 0); each reports the standard AP family over its GT set.</li>
+          <li>The main suite's own floor (<code>min_num_points: 2</code>) stays the release number; the split is
+              diagnostic context for its recall.</li>
+          <li>No extra matching cost beyond the two suites — they reuse the standard per-suite machinery.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= C1 ================= -->
+  <article class="metric" id="m-c1">
+    <div class="metric-head">
+      <span class="metric-id">C1</span>
+      <h3>Detection stability per instance</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      A detector whose boxes jitter frame to frame poisons tracking even if every single frame looks fine
+      in mAP. The dataset's GT instance tokens let us follow one physical object across frames
+      <strong>without any tracker</strong> — and measure how consistently the detector sees it.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 200" width="660" height="200" role="img" aria-labelledby="fig-c1-title">
+        <title id="fig-c1-title">The same ground-truth instance across five consecutive frames: the predicted box wobbles in yaw and reverses direction once — a flip.</title>
+        <g transform="translate(90 84)">
+          <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <g transform="rotate(7)">
+            <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+            <line x1="0" y1="0" x2="34" y2="0" stroke="var(--obj)" stroke-width="2"/>
+            <path d="M 28 -4 L 34 0 L 28 4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          </g>
+          <text x="0" y="48" class="svg-label small" text-anchor="middle">t</text>
+        </g>
+        <g transform="translate(212 84)">
+          <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <g transform="rotate(-6)">
+            <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+            <line x1="0" y1="0" x2="34" y2="0" stroke="var(--obj)" stroke-width="2"/>
+            <path d="M 28 -4 L 34 0 L 28 4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          </g>
+          <text x="0" y="48" class="svg-label small" text-anchor="middle">t+1</text>
+        </g>
+        <g transform="translate(334 84)">
+          <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <g transform="rotate(8)">
+            <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+            <line x1="0" y1="0" x2="34" y2="0" stroke="var(--obj)" stroke-width="2"/>
+            <path d="M 28 -4 L 34 0 L 28 4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          </g>
+          <text x="0" y="48" class="svg-label small" text-anchor="middle">t+2</text>
+        </g>
+        <g transform="translate(456 84)">
+          <circle cx="0" cy="0" r="40" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <g transform="rotate(187)">
+            <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+            <line x1="0" y1="0" x2="34" y2="0" stroke="var(--obj)" stroke-width="2"/>
+            <path d="M 28 -4 L 34 0 L 28 4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          </g>
+          <text x="0" y="-50" class="svg-label strong" text-anchor="middle" style="fill: var(--danger)">flip</text>
+          <text x="0" y="48" class="svg-label small" text-anchor="middle">t+3</text>
+        </g>
+        <g transform="translate(578 84)">
+          <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <g transform="rotate(-5)">
+            <rect x="-22" y="-11" width="44" height="22" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+            <line x1="0" y1="0" x2="34" y2="0" stroke="var(--obj)" stroke-width="2"/>
+            <path d="M 28 -4 L 34 0 L 28 4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          </g>
+          <text x="0" y="48" class="svg-label small" text-anchor="middle">t+4</text>
+        </g>
+        <text x="330" y="186" class="svg-label small" text-anchor="middle">same GT instance token across consecutive frames (dashed = GT, orange = prediction with heading)</text>
+      </svg>
+      </div>
+      <figcaption>Jitter is the frame-to-frame variation of the error series; the reversal at t+3 counts as a
+      flip — the failure mode that actually breaks trackers.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>Group matched TPs by GT <code>instance_token</code>. For each instance with consecutive matched
+        frames, form the error series e_t (yaw error, size error, center error) and measure its
+        frame-to-frame variation — GT motion cancels out because we differentiate the <em>error</em>, not the state:</p>
+        <div class="formula">jitter(x) = std_t( e_t − e_{t−1} ) , &nbsp; e_t = x_pred,t − x_gt,t &nbsp; (yaw wrapped)</div>
+        <p>Plus the <strong>flip rate</strong>: fraction of consecutive frame pairs where the yaw error jumps
+        across ±π/2 — the failure mode that actually breaks trackers. Aggregated per class × range bin.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Requires per-sample instance tokens in the eval output — a small extension of the stored detection state.</li>
+          <li>Sequential accumulation must respect scene boundaries (scene token already propagated in the infos).</li>
+          <li>APE computes the same statistics on tracker output, which is the authoritative runtime version; the AML version is the early-warning signal during training.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= C2 ================= -->
+  <article class="metric" id="m-c2">
+    <div class="metric-head">
+      <span class="metric-id">C2</span>
+      <h3>Consecutive-miss streaks</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Missing an object once for a single frame is noise; missing the same object for two seconds straight
+      is a blind spot. The spec sheet already tracks this at runtime — we compute the identical quantity
+      offline from instance tokens, so it can gate training runs, not just releases.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 150" width="660" height="150" role="img" aria-labelledby="fig-c2-title">
+        <title id="fig-c2-title">Timeline of one instance across sixteen frames: matched frames filled, missed frames outlined; the longest run of four consecutive misses is bracketed as the streak.</title>
+        <path d="M 256 48 L 256 40 L 390 40 L 390 48" fill="none" stroke="var(--danger)" stroke-width="1.5"/>
+        <text x="323" y="30" class="svg-label strong" text-anchor="middle">longest streak = 4 frames</text>
+        <rect x="40" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="76" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="112" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="148" y="56" width="26" height="26" rx="5" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <rect x="184" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="220" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="256" y="56" width="26" height="26" rx="5" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <rect x="292" y="56" width="26" height="26" rx="5" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <rect x="328" y="56" width="26" height="26" rx="5" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <rect x="364" y="56" width="26" height="26" rx="5" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <rect x="400" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="436" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="472" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="508" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="544" y="56" width="26" height="26" rx="5" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <rect x="580" y="56" width="26" height="26" rx="5" fill="var(--accent)" opacity="0.8"/>
+        <rect x="40" y="108" width="14" height="14" rx="3" fill="var(--accent)" opacity="0.8"/>
+        <text x="62" y="120" class="svg-label small">matched</text>
+        <rect x="160" y="108" width="14" height="14" rx="3" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <text x="182" y="120" class="svg-label small">missed while inside coverage</text>
+        <text x="606" y="120" class="svg-label small" text-anchor="end">consecutive annotated frames →</text>
+      </svg>
+      </div>
+      <figcaption>Per instance, the longest run of unmatched frames — the offline equivalent of the runtime
+      max-consecutive-FN duration. Streaks inside the ego corridor are the critical subset.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <div class="formula">streak(instance) = longest run of frames where the GT is inside evaluation coverage but unmatched</div>
+        <p>Reported per class: max and p95 streak length (frames and seconds at the annotation frequency),
+        and the rate of streaks ≥ k frames. Combined with B2's corridor: streaks <em>inside the corridor</em>
+        are the critical subset.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Same instance-token grouping as C1; one accumulation pass serves both.</li>
+          <li>Coverage check (range cap, min points) must be applied per frame so a departing object does not fake a streak.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+
+
+  <!-- ================= D1 ================= -->
+  <article class="metric" id="m-d1">
+    <div class="metric-head">
+      <span class="metric-id">D1</span>
+      <h3>Error clusters (phantom obstacles)</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      An error is simply a point whose prediction disagrees with the ground truth — no class partitioning.
+      What makes an error dangerous is <em>where</em> it happens, and that comes from the region filter
+      (Section 5), never from segmentation class sets: on the road slice these are the phantoms that brake
+      the car and the mislabeled obstacles that hide it. Nearby error points merge into one cluster, and
+      each cluster counts once regardless of size.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 210" width="660" height="210" role="img" aria-labelledby="fig-d2-title">
+        <title id="fig-d2-title">Wrongly-classified points on the drivable surface: every connected group is ringed as one cluster — a lone point and a dense blob each count as a single phantom obstacle, regardless of size.</title>
+        <rect x="10" y="50" width="640" height="120" rx="6" fill="var(--accent)" opacity="0.12"/>
+        <text x="24" y="72" class="svg-label small">drivable surface</text>
+        <rect x="36" y="96" width="44" height="24" rx="4" fill="var(--ego)"/>
+        <text x="58" y="140" class="svg-label small" text-anchor="middle">ego</text>
+        <!-- lone points: each its own size-1 cluster, ringed -->
+        <circle cx="230" cy="100" r="13" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <circle cx="230" cy="100" r="4" fill="var(--obj)"/>
+        <circle cx="330" cy="128" r="13" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <circle cx="330" cy="128" r="4" fill="var(--obj)"/>
+        <circle cx="420" cy="94" r="13" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <circle cx="420" cy="94" r="4" fill="var(--obj)"/>
+        <text x="325" y="196" class="svg-label small" text-anchor="middle">single-point clusters — 1 phantom each</text>
+        <!-- dense blob: one cluster -->
+        <circle cx="548" cy="106" r="4" fill="var(--obj)"/>
+        <circle cx="560" cy="96" r="4" fill="var(--obj)"/>
+        <circle cx="572" cy="110" r="4" fill="var(--obj)"/>
+        <circle cx="556" cy="118" r="4" fill="var(--obj)"/>
+        <circle cx="568" cy="122" r="4" fill="var(--obj)"/>
+        <circle cx="578" cy="98" r="4" fill="var(--obj)"/>
+        <circle cx="547" cy="94" r="4" fill="var(--obj)"/>
+        <circle cx="562" cy="108" r="26" fill="none" stroke="var(--danger)" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="562" y="42" class="svg-label strong" text-anchor="middle">dense cluster — still 1 phantom</text>
+      </svg>
+      </div>
+      <figcaption>Every connected group is one cluster: a lone point and a dense blob each count as a single
+      phantom, so the cluster count weights obstacles by <em>existence</em>, not by point count (that is what
+      the error rate does). Here there are <b>four</b> clusters — three single-point ones and the blob.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>Within the attached filter's region (whole-scene when unfiltered), per range bin:</p>
+        <div class="formula">error rate = #(points with pred ≠ GT) / #(valid points)</div>
+        <p><strong>Cluster level:</strong> connected components of error points (radius ε, spec-versioned).
+        <strong>Each cluster counts as one phantom regardless of size</strong> — a lone stray point and a
+        ten-point blob both cause a single emergency stop, so they carry the same penalty (default minimum
+        cluster size = 1; nearby points merge into one phantom). Reported as counts and counts per frame.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Clustering runs on error points only (a tiny subset), so cost is negligible; same voxel-hash neighborhood code as D3 (the tolerant error rate).</li>
+          <li>Per-class breakdown by the points' ground-truth class — consistent with every other per-class point metric (what the misclassified thing really was).</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= D2 ================= -->
+  <article class="metric" id="m-d2">
+    <div class="metric-head">
+      <span class="metric-id">D2</span>
+      <h3>Small-object partial-detection score</h3>
+      <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip">diagnostic</span><span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      For a pedestrian or a traffic cone, classifying even a handful of points correctly is far better
+      than classifying none — downstream logic can still react. mIoU cannot see this: it averages over
+      points and is dominated by large classes. D2 asks, per small object: <em>did we see it at all?</em>
+      The first correct point earns roughly half the credit — existence — and further points saturate toward one.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 210" width="660" height="210" role="img" aria-labelledby="fig-d3-title">
+        <title id="fig-d3-title">Left: the saturating credit curve — zero correct points score zero, the first point earns about half, and credit saturates toward one at all points correct. Right: two instances, one with no correct point scoring zero and one with a single correct point scoring about half.</title>
+        <!-- curve panel -->
+        <rect x="8" y="8" width="310" height="160" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="24" y="32" class="svg-label strong">saturating credit — h = 1</text>
+        <line x1="40" y1="40" x2="300" y2="40" stroke="var(--line)" stroke-width="1" opacity="0.6"/>
+        <line x1="40" y1="90" x2="300" y2="90" stroke="var(--line)" stroke-width="1" opacity="0.6"/>
+        <text x="34" y="44" class="svg-label small" text-anchor="end">1.0</text>
+        <text x="34" y="94" class="svg-label small" text-anchor="end">0.5</text>
+        <line x1="40" y1="40" x2="40" y2="140" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="40" y1="140" x2="300" y2="140" stroke="var(--line)" stroke-width="1.5"/>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2.5"
+          points="40,140 53,87.5 66,70 79,61.3 92,56 105,52.5 118,50 144,46.7 170,44.6 196,43.1 222,42 248,41.2 274,40.5 300,40"/>
+        <circle cx="40" cy="140" r="4.5" fill="var(--ink2)"/>
+        <circle cx="53" cy="87.5" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="300" cy="40" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="52" y="134" class="svg-label small">0 → 0</text>
+        <text x="66" y="82" class="svg-label strong">1 pt → 0.5</text>
+        <text x="300" y="28" class="svg-label small" text-anchor="end">20/20 → 1.0</text>
+        <text x="170" y="158" class="svg-label small" text-anchor="middle">correct points k inside the GT box (n = 20)</text>
+        <!-- instance panel -->
+        <rect x="342" y="8" width="310" height="160" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="358" y="32" class="svg-label strong">existence is the big step</text>
+        <rect x="370" y="52" width="60" height="60" rx="4" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <g fill="var(--muted)" opacity="0.55">
+          <circle cx="382" cy="62" r="4"/><circle cx="400" cy="58" r="4"/><circle cx="418" cy="64" r="4"/>
+          <circle cx="378" cy="80" r="4"/><circle cx="398" cy="78" r="4"/><circle cx="420" cy="82" r="4"/>
+          <circle cx="384" cy="100" r="4"/><circle cx="404" cy="96" r="4"/><circle cx="422" cy="102" r="4"/>
+        </g>
+        <text x="400" y="132" class="svg-label small" text-anchor="middle">0 / 9 → credit 0.00</text>
+        <rect x="500" y="52" width="60" height="60" rx="4" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <circle cx="512" cy="64" r="4" fill="var(--accent)"/>
+        <g fill="var(--muted)" opacity="0.55">
+          <circle cx="530" cy="60" r="4"/><circle cx="548" cy="66" r="4"/>
+          <circle cx="508" cy="82" r="4"/><circle cx="528" cy="78" r="4"/><circle cx="550" cy="84" r="4"/>
+          <circle cx="514" cy="100" r="4"/><circle cx="534" cy="96" r="4"/><circle cx="552" cy="102" r="4"/>
+        </g>
+        <text x="530" y="132" class="svg-label small" text-anchor="middle">1 / 9 → credit ≈ 0.56</text>
+        <!-- legend -->
+        <circle cx="24" cy="192" r="5" fill="var(--accent)"/>
+        <text x="36" y="196" class="svg-label small">point classified correctly</text>
+        <circle cx="204" cy="192" r="5" fill="var(--muted)" opacity="0.55"/>
+        <text x="216" y="196" class="svg-label small">point misclassified</text>
+        <text x="644" y="196" class="svg-label small" text-anchor="end">dashed = small-object GT box</text>
+      </svg>
+      </div>
+      <figcaption>Credit is a saturating function of the correct-point count: zero correct points score
+      exactly 0, the first point earns ≈ half (existence), and further points add diminishing refinement
+      up to 1.0 at n/n.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>For each GT box of a small-object class, count its interior LiDAR points n and those with the
+        correct predicted class k. The credit uses a normalized saturating (Michaelis–Menten) form:</p>
+        <div class="formula">credit = s(k) / s(n) , &nbsp; s(x) = x / (x + h) , &nbsp; default h = 1 point</div>
+        <p>Properties, by construction rather than by cases: k = 0 → credit exactly 0 (a fully missed object
+        is penalized in full); k = 1 → credit ≈ 0.5 (the first point carries the existence information — the
+        single most valuable point); each further point adds less; k = n → credit exactly 1. The
+        half-saturation constant h is the only parameter (spec-versioned) and sets how strongly the first
+        points are rewarded.</p>
+        <p>D3 = mean credit over instances, per class × range bin. Complementary to mIoU, never
+        a replacement for it.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li><strong>Diagnostic only, by decision:</strong> D2 rewards partial answers, so it never enters
+              release gates or headline suites — it exists to debug small-object recall, not to rank models.</li>
+          <li>Detection GT boxes group points into instances (LiDAR seg GT carries no instance IDs);
+              target classes: pedestrian, bicycle, motorcycle, traffic cone.</li>
+          <li>Instances below a minimum point count are excluded and reported as a count (fail-loud, no smoothing).</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= D3 ================= -->
+  <article class="metric" id="m-d3">
+    <div class="metric-head">
+      <span class="metric-id">D3</span>
+      <h3>Neighbourhood-tolerant error rate</h3>
+      <span class="chip repo-aml">AML</span><span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      Point-wise GT labels are not pixel-perfect, and for driving it does not matter if a handful of points
+      flip class as long as the right class is present right there. D3 forgives exactly that: a misclassified
+      point is <em>not</em> counted as an error if the model predicted its true class on another point within
+      a small radius. Only misclassifications with <strong>no correct-class neighbour</strong> — a genuinely
+      wrong region, not annotation jitter at a boundary — survive as errors.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 210" width="660" height="210" role="img" aria-labelledby="fig-d4-title">
+        <title id="fig-d4-title">Two misclassified points: one sits beside a point where the model predicted its true class and is forgiven; the other has no correct-class neighbour within the radius and counts as an error.</title>
+        <!-- tolerated case -->
+        <rect x="16" y="20" width="300" height="170" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="30" y="42" class="svg-label strong">forgiven</text>
+        <circle cx="120" cy="110" r="34" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="120" y="158" class="svg-label small" text-anchor="middle">radius r</text>
+        <circle cx="120" cy="110" r="6" fill="var(--danger)"/>
+        <text x="120" y="98" class="svg-label small" text-anchor="middle" fill="var(--danger)">pred A · GT B</text>
+        <circle cx="150" cy="122" r="6" fill="var(--accent)"/>
+        <circle cx="98" cy="128" r="6" fill="var(--accent)"/>
+        <text x="150" y="180" class="svg-label small" text-anchor="middle">neighbour predicted B → tolerated</text>
+        <!-- error case -->
+        <rect x="344" y="20" width="300" height="170" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="358" y="42" class="svg-label strong">counts as error</text>
+        <circle cx="470" cy="110" r="34" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <circle cx="470" cy="110" r="6" fill="var(--danger)"/>
+        <text x="470" y="98" class="svg-label small" text-anchor="middle" fill="var(--danger)">pred A · GT B</text>
+        <circle cx="508" cy="128" r="6" fill="var(--accent)"/>
+        <circle cx="434" cy="132" r="6" fill="var(--accent)"/>
+        <text x="490" y="184" class="svg-label small" text-anchor="middle">nearest B is beyond r → error</text>
+      </svg>
+      </div>
+      <figcaption>A misclassified point (red) is forgiven when the model predicted its true class on a
+      neighbour within radius r (left); with no correct-class neighbour it is a real error (right). Tolerance
+      shrinks to standard error rate as r → 0.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>For each point p with GT class g(p) and prediction ŷ(p), define the tolerant error indicator with
+        radius r (default 0.2 m):</p>
+        <div class="formula">err_r(p) = 1 &nbsp;iff&nbsp; ŷ(p) ≠ g(p) &nbsp;AND&nbsp; ∄ q : ‖q − p‖ ≤ r ∧ ŷ(q) = g(p)<br>tolerant error rate = Σ err_r(p) / #(valid points)</div>
+        <p>In words: a point is an error only if the model got it wrong <em>and</em> did not predict the
+        correct class anywhere within r. At r = 0 this is exactly the ordinary error rate; larger r forgives
+        boundary jitter and annotation noise. Reported per region / range like every point metric, and it can
+        feed the D1 cluster count so a tolerated point never seeds a phantom.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Reads the cached per-point coord + pred + target; the neighbour test is one fixed-radius
+              <code>cKDTree</code> query over the misclassified points against the points predicting each
+              target class — the same spatial machinery D1 / D2 already use.</li>
+          <li>r is a spec-versioned parameter; the tolerance is one-sided (it only ever <em>removes</em>
+              errors), so the tolerant rate is always ≤ the strict error rate.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ===== Family E: uncertainty ===== -->
+  <div class="callout">
+    <b>Region variants apply here too.</b> Like every metric in this plan, the uncertainty metrics below are
+    reported whole-scene and per lanelet region — road, walkway, and both — via the region filter defined in
+    <a href="#filters">Section 5</a>. E3 in particular reads naturally per region (confident errors
+    <em>on the road</em> versus on the walkway).
+  </div>
+
+  <!-- ================= E1 ================= -->
+  <article class="metric" id="m-e1">
+    <div class="metric-head">
+      <span class="metric-id">E1</span>
+      <h3>Calibration error (ECE)</h3>
+      <span class="chip repo-aml">AML</span><span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      A model that says “90%” should be right about 90% of the time. When it is not — when it is confidently
+      wrong — downstream logic trusts a mistake. Expected Calibration Error measures that gap between
+      confidence and correctness, on both tasks: in <b>seg3d</b> the confidence is the per-point max-softmax
+      and “right” means the point's class is correct; in <b>det3d</b> the confidence is the detection score
+      and “right” means the box is a true positive (so a bin's accuracy is its precision).
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 480 300" width="480" height="300" role="img" aria-labelledby="fig-e1-title">
+        <title id="fig-e1-title">Reliability diagram: the diagonal is perfect calibration; bars below it show an overconfident model, and the gap between bar and diagonal is the calibration error.</title>
+        <line x1="60" y1="20" x2="60" y2="250" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="250" x2="440" y2="250" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="250" x2="440" y2="20" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <text x="430" y="38" class="svg-label small" text-anchor="end">perfect calibration</text>
+        <!-- accuracy bars below the diagonal (overconfident): x=confidence bin, height=accuracy -->
+        <rect x="130" y="210" width="34" height="40" fill="var(--accent)" opacity="0.7"/>
+        <rect x="206" y="176" width="34" height="74" fill="var(--accent)" opacity="0.7"/>
+        <rect x="282" y="150" width="34" height="100" fill="var(--accent)" opacity="0.7"/>
+        <rect x="358" y="120" width="34" height="130" fill="var(--accent)" opacity="0.7"/>
+        <!-- gap markers -->
+        <line x1="147" y1="210" x2="147" y2="197" stroke="var(--danger)" stroke-width="2"/>
+        <line x1="299" y1="150" x2="299" y2="105" stroke="var(--danger)" stroke-width="2"/>
+        <text x="250" y="278" class="svg-label" text-anchor="middle">confidence (max softmax) →</text>
+        <text x="26" y="140" class="svg-label" text-anchor="middle" transform="rotate(-90 26 140)">accuracy</text>
+        <text x="315" y="74" class="svg-label strong" fill="var(--danger)" text-anchor="middle">gap = |acc − conf|</text>
+      </svg>
+      </div>
+      <figcaption>Bars sitting below the diagonal are overconfidence; ECE is the point-weighted mean of the
+      red gaps across confidence bins.</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>Bin the predictions by confidence into M bins; per bin compare mean confidence to the empirical
+        correctness rate:</p>
+        <div class="formula">seg3d: &nbsp; conf = max softmax, correctness = point-class correct<br>det3d: &nbsp; conf = detection score, correctness = box is a true positive (⇒ acc(b) = precision(b))<br>ECE = Σ<sub>b=1..M</sub> (n_b / N) · | acc(b) − conf(b) |</div>
+        <p>Reported overall, macro-averaged per class (so a dominant class does not hide the rest), and per
+        range bin × region variant. DDP-clean: each bin's (confidence-sum, correct-count, count) are summable
+        accumulators. M is a spec-versioned parameter (default 15 bins).</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>seg3d reads the per-point softmax from the test point-cache; det3d reads each prediction's score + TP/FP outcome from the match state — no new accumulation.</li>
+          <li>Release-relevant (a gate candidate); note it is temperature-dependent, so it measures calibration <em>as shipped</em>, before any post-hoc recalibration.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= E2 ================= -->
+  <article class="metric" id="m-e2">
+    <div class="metric-head">
+      <span class="metric-id">E2</span>
+      <h3>Uncertainty usefulness (entropy AUROC)</h3>
+      <span class="chip repo-aml">AML</span><span class="chip">diagnostic</span><span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      Uncertainty is only worth anything if it flags the model's <em>own</em> mistakes — then downstream can
+      hesitate where the model is unsure. This checks whether per-point entropy actually separates correct
+      points from wrong ones. A model with great mIoU but random entropy is silently unsafe; E2 catches that.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 520 250" width="520" height="250" role="img" aria-labelledby="fig-e2-title">
+        <title id="fig-e2-title">Two entropy distributions: correct points cluster at low entropy and misclassified points at high entropy; the more they separate, the higher the AUROC of entropy as an error detector.</title>
+        <line x1="60" y1="190" x2="490" y2="190" stroke="var(--line)" stroke-width="1.5"/>
+        <!-- correct points: low-entropy peak (green) -->
+        <polygon points="60,190 60,150 81,95 102,62 123,72 144,105 186,150 228,175 270,184 312,187 396,190 480,190"
+                 fill="var(--accent)" opacity="0.16"/>
+        <polyline points="60,150 81,95 102,62 123,72 144,105 186,150 228,175 270,184 312,187 396,190 480,190"
+                  fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <!-- misclassified points: high-entropy peak (orange) -->
+        <polygon points="144,190 144,185 186,172 228,148 270,120 312,102 354,98 396,112 438,142 480,168 480,190"
+                 fill="var(--obj)" opacity="0.16"/>
+        <polyline points="144,185 186,172 228,148 270,120 312,102 354,98 396,112 438,142 480,168"
+                  fill="none" stroke="var(--obj)" stroke-width="2"/>
+        <text x="105" y="50" class="svg-label strong" fill="var(--accent-text)" text-anchor="middle">correct</text>
+        <text x="362" y="86" class="svg-label strong" fill="var(--obj)" text-anchor="middle">misclassified</text>
+        <text x="250" y="150" class="svg-label small" text-anchor="middle">overlap = confusable</text>
+        <text x="275" y="216" class="svg-label" text-anchor="middle">normalized entropy H →</text>
+        <text x="60" y="234" class="svg-label small" text-anchor="middle">0</text>
+        <text x="480" y="234" class="svg-label small" text-anchor="middle">1</text>
+        <text x="26" y="120" class="svg-label" text-anchor="middle" transform="rotate(-90 26 120)">point density</text>
+      </svg>
+      </div>
+      <figcaption>The further the misclassified distribution sits to the right of the correct one, the more
+      entropy works as an error flag — AUROC measures exactly that separation (0.5 = useless, 1.0 = perfect).</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <p>Per point, the normalized predictive entropy of the softmax distribution:</p>
+        <div class="formula">H = − Σ<sub>c</sub> p_c · ln p_c / ln C ∈ [0, 1]</div>
+        <p>Treat H as a score for the binary task “is this point misclassified?” and report the
+        <strong>AUROC</strong>, plus the mean entropy of correct vs misclassified points. 0.5 AUROC means the
+        uncertainty is meaningless; higher means entropy is a usable error flag. Computed at compute() from
+        the cached points (not summable — the point cache makes it feasible at test).</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>Diagnostic, not a gate: it characterises the uncertainty signal, it does not rank model accuracy.</li>
+          <li>This is softmax (aleatoric-style) confidence, not Bayesian epistemic uncertainty — the latter would need MC-dropout or ensembles, a model-side change, out of scope here.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= E3 ================= -->
+  <article class="metric" id="m-e3">
+    <div class="metric-head">
+      <span class="metric-id">E3</span>
+      <h3>Confident-error rate</h3>
+      <span class="chip repo-aml">AML</span><span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      The sharpest driving-relevant one, on both tasks: of the errors the model makes, what fraction did it
+      make at <em>high confidence</em>? A mistake the model is unsure about is recoverable; a confident one
+      triggers a hard brake. E3 splits errors into hesitant versus confident — the confident ones are the
+      release blockers. In <b>seg3d</b> an error is a point whose class is wrong and confidence is
+      1 − entropy (it composes with <a href="#m-d1">D1</a>'s error extraction); in <b>det3d</b> an error is a
+      <em>false-positive box</em> and confidence is the detection score — the confident phantom detection.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 420 280" width="420" height="280" role="img" aria-labelledby="fig-e3-title">
+        <title id="fig-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one E3 measures.</title>
+        <line x1="60" y1="30" x2="60" y2="230" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="230" x2="380" y2="230" stroke="var(--line)" stroke-width="1.5"/>
+        <rect x="60" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="220" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="60" y="30" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="220" y="30" width="160" height="100" fill="var(--danger)" opacity="0.22"/>
+        <text x="140" y="185" class="svg-label small" text-anchor="middle">uncertain &amp; correct</text>
+        <text x="300" y="185" class="svg-label small" text-anchor="middle">confident &amp; correct</text>
+        <text x="140" y="85" class="svg-label small" text-anchor="middle">uncertain &amp; wrong</text>
+        <text x="300" y="80" class="svg-label strong" text-anchor="middle" fill="var(--danger)">confident</text>
+        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">&amp; wrong → E3</text>
+        <text x="220" y="256" class="svg-label" text-anchor="middle">confidence →</text>
+        <text x="26" y="130" class="svg-label" text-anchor="middle" transform="rotate(-90 26 130)">wrong ← → correct</text>
+      </svg>
+      </div>
+      <figcaption>The same two-by-two on both tasks: E3 is the fraction of errors in the confident-and-wrong
+      quadrant — a confident phantom point (seg3d) or a confident false-positive box (det3d).</figcaption>
+    </figure>
+    <details>
+      <summary>The math</summary>
+      <div class="body">
+        <div class="formula">seg3d: &nbsp; E3 = #(misclassified points with entropy H &lt; τ) / #(misclassified points)<br>det3d: &nbsp; E3 = #(false positives with score ≥ τ_high) / #(false positives) , &nbsp; τ / τ_high spec-versioned</div>
+        <p>The area comes from the attached region / corridor filter (road / walkway / whole-scene),
+        per range bin. det3d is <strong>false-positive only</strong>: a false negative carries no prediction
+        and therefore no confidence, so it cannot be confident or hesitant — the missed-object (safety) axis
+        is <a href="#m-b1">B1</a>'s critical-FN. On the road / corridor slice a confident error is exactly
+        the confident phantom that triggers a hard brake.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>seg3d: shares D1's error-point extraction and the region masks; only adds the confidence threshold split. Read together with D1.</li>
+          <li>det3d: reads the score of each unmatched prediction (false positive) already produced by the matcher; no new state. Read together with B1.</li>
+          <li>Confident errors are the release-blocking subset of the error set on either task.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+
+  <!-- ================= F1 ================= -->
+  <article class="metric" id="m-f1">
+    <div class="metric-head">
+      <span class="metric-id">F1</span>
+      <h3>Class confusion matrix</h3>
+      <span class="chip repo-aml">AML</span><span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      A scalar per class hides <em>which</em> class the model mistakes for which — and some swaps matter for
+      driving far more than others. The confusion matrix reads the raw true×predicted counts on both tasks:
+      rows are the ground-truth class, columns the predicted class, so the diagonal is correct and every
+      off-diagonal cell is a specific confusion (a truck called a bus, a barrier called a traffic cone).
+      Read straight against the <a href="#taxonomy">behaviour taxonomy</a>: the same matrix is emitted per
+      trained class and again folded to behaviour groups, where intra-group confusion collapses onto the
+      diagonal — so the grouped matrix shows only the swaps that change the driving decision.
+    </p>
+    <p style="font-size:0.9rem; color:var(--ink2);">
+      <b>seg3d</b> is point-level and needs no matching: the confusion suite already accumulates the point
+      matrix, and this metric just emits its cells. <b>det3d</b> has no matrix natively, so predictions are
+      paired to ground truth by <strong>class-agnostic greedy center-distance matching</strong> at a fixed
+      threshold (2 m); each matched pair contributes to <code>confusion[true, pred]</code>. It is the
+      label-confusion view among detections that <em>did</em> match — unmatched predictions (false
+      positives) and unmatched ground truth (misses) are left to <a href="#m-b1">B1</a> and are not in this
+      matrix.
+    </p>
+    <details>
+      <summary>The math &amp; slices</summary>
+      <div class="body">
+        <div class="formula">seg3d: &nbsp; M[t, p] = #(points with true class t predicted as p)<br>det3d: &nbsp; M[t, p] = #(matched pairs whose GT is class t and prediction is class p) , &nbsp; match: greedy center-distance ≤ 2 m, class-agnostic</div>
+        <p>Emitted as raw counts <code>confusion_&lt;true&gt;__&lt;pred&gt;</code> (the report row-normalizes
+        into a heatmap, so both the count and the per-true-class rate are recoverable). Like every metric it
+        carries the filter and range axes: the matrix is reported <strong>whole-scene, on the road slice and
+        in the ego corridor</strong>, each split by distance band — so "what does the model confuse, and
+        where" is one lookup.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Implementation notes</summary>
+      <div class="body">
+        <ul>
+          <li>seg3d: a thin reader of the existing <code>ConfusionState</code>; the grouped suite already
+          folds the matrix, so the grouped confusion is free.</li>
+          <li>det3d: reuses the criticality matcher (<code>greedy_match</code>) class-agnostically; the
+          grouped suite folds labels before the state is built, so the grouped matrix needs no extra code.</li>
+          <li>Counts are neutral (no better/worse direction); the diagonal is the correct mass.</li>
+        </ul>
+      </div>
+    </details>
+  </article>
+</section>
+
+<!-- ============================================================ 8 -->
+<section id="architecture">
+  <div class="sec-label">Section 8</div>
+  <h2>Evaluation architecture — suites &amp; contracts</h2>
+  <p>
+    How the plan maps to code in autoware-ml. One rule governs the layout: <strong>a separate suite
+    exists only when the accumulated state differs</strong> — metrics never justify a suite on their own.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Suite</th><th>Accumulated state</th><th>Metrics served</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Detection3DMetricSuite</code></td>
+          <td>Raw per-frame boxes (predictions + filtered GT). B1 / B2 read the same per-frame samples
+              plus the per-box reachability TTC the suite's collision provider computed at update (no corridor
+              filter — B1 gates on finite TTC, B2 weights by it); no scene grouping or recorded trajectory</td>
+          <td>mAP · APH · NDS · TP errors · A1–A3 · B1 · B2 · E1 · E3</td>
+        </tr>
+        <tr>
+          <td><code>Segmentation3DConfusionMatrixMetricSuite</code></td>
+          <td>Bounded confusion matrices, one per (filter, range) bucket — a single
+              <code>(F+1, R+1, C, C)</code> sum tensor; per-point filter membership is resolved at update,
+              which is what lets a bounded matrix support the filter axis at all</td>
+          <td>IoU · accuracy · precision / recall / F1</td>
+        </tr>
+        <tr>
+          <td><code>Segmentation3DPointCloudMetricSuite</code></td>
+          <td>Raw per-frame point cache (coord, labels, per-class scores) — the spatial / uncertainty
+              metrics need what a confusion matrix has discarded; too heavy for every val epoch</td>
+          <td>D1 · D2 · D3 · E1 · E2 · E3</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Every metric key composes as <code>[filter/]name[_range]</code> — e.g. <code>region_road/mAP_car_0m_50m</code> —
+    so the filter and range axes never collide. Suites are <strong>stage-aware</strong>: components are
+    grouped by stage and filter, and a validation clone neither demands nor accumulates data that only
+    test-stage components consume (ego pose, maps, point caches).
+  </p>
+
+  <h3>Eval-output contracts</h3>
+  <p>
+    A model's <code>build_eval_output</code> produces one flat dict per batch; each suite declares the keys
+    it needs and fails loud at the first batch when one is missing. Detection is per-frame lists:
+  </p>
+  <div class="formula">predictions: [{bboxes_3d, scores_3d, labels_3d}] · gt_boxes · gt_labels · gt_num_points<br>+ ego2global · scene_token &nbsp;(region &amp; corridor filters — B1 / B2 run per-frame in the corridor)</div>
+  <p>
+    Segmentation uses one contract for <em>both</em> suites — <code>seg_frames</code>, a list with one entry
+    per frame:
+  </p>
+  <div class="formula">seg_frames: [ { coord (N×3) · pred (N) · target (N) · scores (N×C)<br>&nbsp;&nbsp;[ · ego2global · scene_token — region &amp; corridor filters ]<br>&nbsp;&nbsp;[ · gt_boxes · gt_box_labels — D2 partial detection ] } , … ]</div>
+  <p>
+    The bracketed metadata is copied through when the dataset supplies it; a configured filter or metric
+    that needs a missing key raises naming it — absence is never silent. For T4, <code>scene_token</code>
+    is the scene directory fragment (<code>&lt;db&gt;/&lt;uuid&gt;/&lt;version&gt;</code>), which is how the
+    map provider resolves each scene's <code>lanelet2_map.osm</code>.
+  </p>
+
+  <h3>Report data format</h3>
+  <p>
+    The HTML report is a fixed <em>layout</em> filled from data at build time — never hand-edited. Each
+    <strong>release</strong> is one JSON file against the versioned contract in
+    the report-data schema; the builder parses one or more of
+    them into a copy of the report layout. Files are read <strong>in order</strong>
+    (oldest&nbsp;→&nbsp;newest): each contributes one model per test set, and the report draws them as
+    comparison bars with the last as the current release. This is the boundary between repos — a det3d repo
+    and a seg3d repo can each emit their own file for a release; the builder aligns them by
+    <code>test_set.id</code>.
+  </p>
+  <details>
+    <summary>The JSON contract</summary>
+    <div class="body">
+      <div class="formula" style="white-space: pre">{
+  "schema_version": "1.0",
+  "repo_url": "https://github.com/&lt;org&gt;/autoware-ml",   // optional, base for commit links
+  "test_sets": [
+    {
+      "id": "det3d", "label": "det3d", "version": "1.0",       // aligned across files by id; version gates comparability
+      "tasks": ["det3d"],                                      // which metric sections show
+      "dataset": { "num_frames": 5910, "num_scenes": 244,
+                   "sources": [ {"db": "db_j6gen2_v1", "scenes": ["db_j6gen2_v1/&lt;uuid&gt;/0", "..."]} ],
+                   "distributions": [ {"title": "GT objects per class", "unit": "objects",
+                                       "bars": [ {"label": "car", "value": 41892} ]} ] },
+      "metric_spec": { "bundle": "1.0.0",
+                       "metrics": { "corner_error": {"version": "1.0", "params": {"tp_threshold_m": 2.0}} } },
+      "models": [                                              // ONE model per file (this release)
+        { "name": "PTv3 v0.3", "model": "PTv3", "date": "2026-07-28",
+          "test_set_version": "1.0",                           // MAJOR ≠ test set's ⇒ greyed as a different test set
+          "repo_commit": "…", "eval_config": "…",
+          "metrics": {
+            "det3d":         { "mAP_0m_121m": 0.71, "region_road/mAP_car_0m_50m": 0.64, "…": null },
+            "det3d_grouped": { "mAP_grouped_vehicle_0m_121m": 0.80 }
+          } } ]
+    }
+    // …one entry per test set (seg3d buckets: seg3d, seg3d_grouped)…
+  ]
+}</div>
+      <ul style="font-size:0.92rem; color:var(--ink2);">
+        <li><strong>Metric keys</strong> are exactly what the suites emit — <code>[filter/]name_range</code>
+            (e.g. <code>corridor/critical_fn_pedestrian_0p5m_0m_121m</code>). <code>NaN</code> → <code>null</code>
+            (rendered as "–", meaning no support), because JSON has no NaN.</li>
+        <li><strong>Buckets</strong> are the metric namespaces: <code>det3d</code>, <code>det3d_grouped</code>,
+            <code>det3d_visible</code>, <code>det3d_overall</code>, <code>seg3d</code>,
+            <code>seg3d_grouped</code>. The taxonomy tab switches per-class vs the <code>_grouped</code> fold.</li>
+        <li><strong>Order is the comparison order.</strong> <code>build_report.py a.json b.json c.json</code>
+            concatenates each test set's model from every file in that order; <code>dataset</code>,
+            <code>metric_spec</code>, <code>label</code> and <code>version</code> are taken from the first
+            file that provides them.</li>
+        <li><strong>Separation of concerns.</strong> How the numbers get from an eval run into a JSON file is
+            each repo's business; the layout and the builder only consume this contract.</li>
+      </ul>
+    </div>
+  </details>
+
+</section>
+
+<!-- ============================================================ 9 -->
+<section id="seg-parity">
+  <div class="sec-label">Section 9</div>
+  <h2>Segmentation support in perception_evaluation</h2>
+  <p>
+    The runtime evaluator today covers detection, tracking, classification and point-cloud sensing
+    checks — <strong>segmentation is absent entirely</strong>, in 2D and 3D. Segmentation feeds
+    drivable-area and obstacle decisions on the product, so the evaluator must learn to score it.
+    A confirmed prerequisite: the evaluator gains map-geometry access through the same cached
+    lanelet-polygon pipeline used offline — one converter to maintain, shared by both repos.
+    Three steps, in order:
+  </p>
+  <div class="cards three">
+    <div class="card">
+      <h3>1 · Reproduce the offline suite</h3>
+      <p>Implement the autoware-ml segmentation metrics — per-class IoU / mIoU, accuracy,
+      precision / recall / F1 — plus <a href="#m-d1">D1</a>, <a href="#m-d3">D3</a> and the
+      Family&nbsp;E uncertainty metrics (<a href="#m-e1">E1</a>–<a href="#m-e3">E3</a>) with their region
+      variants, all from the same versioned spec, evaluated in replay against annotated datasets.</p>
+    </div>
+    <div class="card">
+      <h3>2 · Exploit the runtime</h3>
+      <p>Metrics only possible with live consecutive frames: <strong>label flicker rate</strong> — how
+      often static-world points change class frame to frame (ego pose aligns the frames, the map says
+      what is static) — and segmentation latency in the accuracy–latency Pareto report.</p>
+    </div>
+    <div class="card">
+      <h3>3 · Cross-task consistency</h3>
+      <p>The evaluator uniquely sees detection, tracking and segmentation together: points inside a
+      tracked object's box should carry the matching semantic class. The disagreement rate is a
+      runtime-only health signal neither task can compute alone.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 10 -->
+<section id="rejected">
+  <div class="sec-label">Section 10</div>
+  <h2>Considered and on hold</h2>
+  <div class="callout risk">
+    <p style="margin-top:0"><b>Latency-aware AP (L-AP) — on hold, not adopted as a release metric.</b>
+    The paper extrapolates ground truth forward by the model's inference latency and scores predictions
+    against that shifted world — assuming planning consumes a zero-latency snapshot of “now”.</p>
+    <p><b>Long term, that premise is wrong:</b> perception outputs are timestamped, and tracking + prediction
+    exist precisely to reason from past states into the future. Fusing latency into AP would bake a
+    downstream defect into a perception score.</p>
+    <p><b>Short term, it is uncomfortably accurate:</b> parts of today's rule-based planning behave exactly as
+    L-AP assumes — some modules consume only the object position (not the predicted path), none consume
+    object uncertainty, and the delay-compensation path has a known timestamp-sync gap being fixed
+    upstream (autoware_universe PR #12979). Until that lands, an L-AP-style shifted evaluation has
+    <em>diagnostic</em> value for the current stack.</p>
+    <p style="margin-bottom:0"><b>Decision:</b> planning-aware metrics are prioritized; latency-aware scoring stays on hold. Latency
+    itself remains a first-class number, reported <em>next to</em> accuracy as a Pareto pair on the spec
+    sheet (measured in perception_evaluation, where real hardware exists) — never fused. The zero-latency
+    planning assumption is raised to the planning team as a separate issue.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 11 -->
+<section id="governance">
+  <div class="sec-label">Section 11</div>
+  <h2>Versioning — metrics &amp; test sets</h2>
+  <p>
+    The new metrics carry parameters — λ, horizons, radii, buffers, tier thresholds. Changing any of them
+    silently breaks week-over-week comparability. Three rules keep the numbers trustworthy:
+  </p>
+  <div class="cards three">
+    <div class="card">
+      <h3>1 · Versioned specs</h3>
+      <p>All parameters live in one versioned metric-spec (semver). Every report and spec sheet states the
+      version it was computed with. Changing a parameter = new version + recomputed baselines, never an
+      in-place edit.</p>
+    </div>
+    <div class="card">
+      <h3>2 · Weighted ⇒ also unweighted</h3>
+      <p>Every masked or weighted number is published beside its unmasked / unweighted counterpart.
+      Otherwise regressions in “unimportant” regions become invisible — until the weighting changes.</p>
+    </div>
+    <div class="card">
+      <h3>3 · Same spec, both repos</h3>
+      <p>Both repos implement the identical, versioned spec. Parity has two levels: the shared metric
+      core must match exactly on identical inputs; end-to-end ROS replay must stay within the spec's
+      tolerance bands, because ROS timing is not deterministic (Section 4).</p>
+    </div>
+  </div>
+
+  <h3>The version format</h3>
+  <p>
+    Two levels, so a report can tag <em>every single number</em> with the exact definition that produced
+    it. A <strong>per-metric version</strong> travels with each value; a <strong>bundle version</strong>
+    names the whole set the run was computed against. Metrics are keyed by their <strong>plain name</strong> everywhere
+    (<code>corner_error</code>, <code>collision_weighted_map</code>, …). The catalog ids (A1, B2, …) exist
+    only in this proposal as cross-references; they are <b>never</b> emitted by a suite or shown in a report.
+  </p>
+  <div class="formula">per-metric: &nbsp; &lt;metric-name&gt;@v&lt;MAJOR&gt;.&lt;MINOR&gt; &nbsp;&nbsp; e.g. <b>corner_error@v1.0</b> · <b>collision_weighted_map@v1.2</b> · <b>error_clusters@v2.0</b><br>bundle: &nbsp;&nbsp;&nbsp;&nbsp; metric-spec &lt;MAJOR&gt;.&lt;MINOR&gt;.&lt;PATCH&gt; &nbsp;&nbsp; e.g. <b>metric-spec 1.4.0</b></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Bump</th><th>Means</th><th>Comparability</th><th>Trigger examples</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>MAJOR</b> (per-metric)</td>
+          <td>The <em>definition</em> changed — the formula, the matching rule, or what is counted. It is a
+              different quantity that happens to share a name.</td>
+          <td class="no">Never compare across majors. A trend line must break at the version change, not
+              step silently.</td>
+          <td>corner-distance replaces center-distance matching; <code>error_clusters</code> switches from
+              “any pred≠target” to a class-set rule; the credit curve s(x) changes shape.</td>
+        </tr>
+        <tr>
+          <td><b>MINOR</b> (per-metric)</td>
+          <td>Same definition, a <em>parameter value</em> moved. Numbers shift but remain the same kind of
+              measurement.</td>
+          <td>Comparable only within the same <code>id@vMAJOR.MINOR</code>; baselines are recomputed on
+              bump.</td>
+          <td>λ 0.5→0.4; corridor horizon 4 s→3 s; ECE bins 15→20; region border-margin 0.2→0.3 m;
+              flip threshold π/2→2π/3.</td>
+        </tr>
+        <tr>
+          <td><b>PATCH</b> (bundle only)</td>
+          <td>Nothing numeric changed — docs, performance, a refactor that leaves every value bit-identical.</td>
+          <td class="yes">Fully comparable; no baseline recompute.</td>
+          <td>faster boundary query; renamed an internal helper.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    The <strong>bundle</strong> version is not a free-standing number: its MAJOR/MINOR is the roll-up of the
+    metric bumps it contains (any metric MAJOR ⇒ bundle MAJOR; else any metric MINOR ⇒ bundle MINOR; else
+    PATCH). One line at the top of a report — “computed with metric-spec 1.4.0” — plus the per-metric tag on
+    each value is enough to reconstruct exactly how any figure was produced.
+  </p>
+
+  <h3>How a report carries it</h3>
+  <p>
+    The release report embeds one <code>metric_spec</code> block next to the results, keyed by metric name;
+    every metric section prints its <code>name@vX.Y</code>, and the parameter table <em>is</em> the config
+    chips already shown per metric. Trend charts key each series on <code>(metric-name, version)</code> so a
+    version change is visible as a break, never a silent shift.
+  </p>
+  <div class="formula">metric_spec: {<br>&nbsp;&nbsp;bundle: "1.4.0",<br>&nbsp;&nbsp;metrics: {<br>&nbsp;&nbsp;&nbsp;&nbsp;"corner_error":&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; { version: "1.0", params: { tp_threshold_m: 2.0, assignment: "cyclic-min" } },<br>&nbsp;&nbsp;&nbsp;&nbsp;"collision_weighted_map": { version: "1.2", params: { lambda: 0.5, horizon_s: 4.0, dt_s: 0.1, max_lateral_accel: 3.0 } },<br>&nbsp;&nbsp;&nbsp;&nbsp;"error_clusters":&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; { version: "1.0", params: { cluster_radius_m: 0.5, min_cluster_points: 1 } }<br>&nbsp;&nbsp;&nbsp;&nbsp;…<br>&nbsp;&nbsp;}<br>}</div>
+  <p>
+    The metric <strong>name</strong> is the stable key (<code>corner_error</code>,
+    <code>collision_weighted_map</code>, … — the same names the suites already emit in their keys), so the
+    spec scales to hundreds of metrics without a hand-maintained id scheme. Rule of thumb for the author:
+    <em>if you touched a number in <a href="#catalog">Section 7</a>'s config chips, you bumped a MINOR; if
+    you touched a formula or a match rule, you bumped a MAJOR.</em>
+  </p>
+
+  <h3>The test set is versioned too</h3>
+  <p>
+    A number is only meaningful as a triple — <strong>(value, metric-spec version, test-set version)</strong>.
+    The metric-spec fixes <em>how</em> a metric is computed; the <strong>test set</strong> fixes <em>what</em>
+    it was computed on. Comparing two models across a change in <em>either</em> is invalid, so the eval
+    dataset carries its own version on exactly the same rules.
+  </p>
+  <div class="formula">test-set: &nbsp; &lt;name&gt;@v&lt;MAJOR&gt;.&lt;MINOR&gt; &nbsp;&nbsp; e.g. <b>det3d@v0.1</b> · <b>seg3d@v0.1</b> · <b>seg3d-det3d@v0.1</b></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Bump</th><th>Means</th><th>Comparability</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>MAJOR</b></td>
+          <td>The population changed in a way that shifts what “good” means — scenes added or removed,
+              a re-labelling, a taxonomy or split change.</td>
+          <td class="no">Never compare a model across a test-set major; the baseline is re-run on the new set.</td>
+        </tr>
+        <tr>
+          <td><b>MINOR</b></td>
+          <td>An additive top-up that leaves existing frames intact — extra scenes appended, a metadata fix.</td>
+          <td>Comparable with care; the safe path is to re-run baselines and note the version on every number.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    A test set also has a <strong>task scope</strong> — <code>det3d</code>, <code>seg3d</code>, or both —
+    because our datasets do not all carry both annotation kinds (<a href="#data">Section 12</a>): a det3d-only
+    test set simply has no segmentation numbers to report. A report therefore selects a test set first, and
+    every section, chart and slice follows from it; a model evaluated on <code>det3d@v0.1</code> is never
+    plotted beside one on <code>seg3d-det3d@v0.1</code>. Changing a test set is a <em>new versioned entry</em>,
+    never an in-place edit — the same discipline the metric-spec follows.
+  </p>
+</section>
+
+<!-- ============================================================ 12 -->
+<section id="data">
+  <div class="sec-label">Section 12</div>
+  <h2>Data requirements</h2>
+  <p>
+    Availability is <strong>per dataset</strong>, not global — a metric is only as available as its rarest
+    input on the dataset a report runs against. The column below names the concrete dataset that supplies
+    each input, so “no dataset stores everything at once” is explicit rather than assumed.
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Input</th><th>Needed by</th><th>Availability (per dataset)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Ego pose per frame + lane speed limit</td><td>Region &amp; corridor filters (frame transform), B1, B2 (reachable set / TTC)</td><td class="yes">Any T4 dataset for <code>ego2global</code>; the ego reachable set needs the current ego state + the lane speed limit (gen2 map), no tracker and no recorded future</td></tr>
+        <tr><td>GT boxes + <code>num_lidar_pts</code> + valid flag</td><td>mAP / APH / NDS / TP errors, A1–A3, B1, and the min-points filter</td><td class="yes">Det3D T4Dataset — box columns and point counts come from t4_devkit; <code>num_lidar_pts</code> drives the min-points filter and the validity flag</td></tr>
+        <tr><td>Friction-limited turn radius (R = v²/a<sub>lat</sub>), per-class VRU run speeds, off-map fallback speed</td><td>B1 / B2 reachability engine</td><td class="yes">Spec constants, not dataset fields — the wheeled max speed itself comes from the lanelet <code>speed_limit</code> (row above); reachability is deliberately independent of any observed velocity, so no per-object GT velocity is required</td></tr>
+        <tr><td>Lanelet map — road / walkway / crosswalk polygons + speed limits (<code>map/lanelet2_map.osm</code>, local coords)</td><td>Region filter (Section 5) — every det3d + seg3d road / walkway slice; the ego reachable set (lane speed limit) for B1 / B2</td><td>gen2 DBs only — older DBs (db_j6_v3/v5, db_largebus_v1, …) ship no <code>map/</code>; the region slice is declared per dataset and fails loud where the map is absent</td></tr>
+        <tr><td>Per-point semantic labels (real lidarseg)</td><td>All seg3d metrics (IoU / acc / PRF1, D1–D3, E1–E3)</td><td>Seg3D T4Dataset — a det3d dataset with <b>pseudo-labelled</b> point masks, or a dataset carrying real per-frame detection <em>and</em> segmentation together (the segdet path accepts both when present)</td></tr>
+        <tr><td>Per-point softmax scores (test point-cache)</td><td>E1, E2, E3</td><td class="yes">Produced at test on any seg3d evaluation — a model output, the cache's reason for storing scores</td></tr>
+        <tr><td>GT detection boxes <em>and</em> point labels on the same frame</td><td>D2 small-object partial-detection score</td><td>A dataset (or the segdet pipeline) that provides detection boxes and point labels together for the same frame</td></tr>
+        <tr><td>Stable GT instance token across frames</td><td>C1, C2 (per-instance stability &amp; miss streaks)</td><td class="no">Present in the T4 <em>database</em> layer (<code>box3d_instance_id</code>, stable across a scene) but <b>dropped from the training / eval info pkl</b> and unused by any loader — surfacing it needs an info regeneration</td></tr>
+        <tr><td>Tracker output</td><td>C1 / C2 runtime variants, CLEAR</td><td>perception_evaluation only</td></tr>
+        <tr><td>Planned trajectory / latency measurements</td><td>B-online, latency reporting</td><td>perception_evaluation only</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ 13 -->
+<section id="rollout">
+  <div class="sec-label">Section 13</div>
+  <h2>Rollout phases</h2>
+  <p>Four phases. Everything we run today is <strong>Phase 1</strong>, on the one reachability model of
+  <a href="#core">Section 4</a>; later phases add the temporal metrics that need a continuous stream, port
+  the whole set to the runtime evaluator, and finally optimize throughput (faster kernels + parallel
+  compute).</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Phase</th><th>Deliverables</th><th>Gated on</th><th>Repo</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1</strong></td>
+          <td><b>All current metrics.</b> det3d: mAP · mAPH · NDS · TP errors · A1 · A2 · A3 · B1 · B2 ·
+              E1 · E3. seg3d: IoU · accuracy · PRF1 · D1 · D2 · D3 · E1 · E2 · E3. Plus the region &amp;
+              corridor filters. B1 / B2 use the one reachability model (Section 4).</td>
+          <td class="yes">Runs on the current test data. (D2 partial-detection needs a det3d + seg3d test
+              set; everything else is live.)</td>
+          <td><span class="chip repo-aml">AML</span></td>
+        </tr>
+        <tr>
+          <td><strong>2</strong></td>
+          <td>C1 · C2 — per-instance stability &amp; consecutive-miss streaks.</td>
+          <td><b>A continuous stream.</b> Following one object frame to frame needs the stable instance token
+              surfaced from the T4 database (<code>box3d_instance_id</code>) into the info pkl (a regeneration)
+              + scene-grouped per-instance state.</td>
+          <td><span class="chip repo-aml">AML</span></td>
+        </tr>
+        <tr>
+          <td><strong>3</strong></td>
+          <td>The whole set ported to <b>perception_evaluation</b> (runtime): online ego + live-tracker
+              providers, segmentation support, latency Pareto reporting.</td>
+          <td>A shared metric-spec package + lanelet &amp; segmentation-GT loading in the evaluator; ROS timing
+              is non-deterministic, so end-to-end parity is tolerance-banded (Section 4).</td>
+          <td><span class="chip repo-ape">APE</span></td>
+        </tr>
+        <tr>
+          <td><strong>4</strong></td>
+          <td><b>Performance &amp; scaling.</b> Throughput only — no metric or number changes. Faster spatial
+              kernels (e.g. voxel-hash neighbourhoods in place of per-frame KDTree rebuilds), reuse of one
+              spatial index per frame across the point-level metrics, and parallelizing the end-of-eval
+              <code>compute()</code> across cores for the heavy point-cloud suite.</td>
+          <td>A profiling pass, plus a parallel-safe and deterministic compute path (bit-identical to the
+              serial one) so reproducibility is preserved. Purely an optimization layer over the existing
+              metrics.</td>
+          <td><span class="chip repo-aml">AML</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ refs -->
+<section id="refs">
+  <div class="sec-label">Appendix</div>
+  <h2>References</h2>
+  <ul style="font-size:0.9rem; color:var(--ink2); line-height:1.8;">
+    <li><em>Rethink 3D Object Detection from Physical World</em> (L-AP / P-AP) — <a href="https://arxiv.org/abs/2507.00190">arXiv 2507.00190</a></li>
+    <li><em>Collision-risk weighted Perception Accuracy</em> — internal TIER IV proposal (available on request)</li>
+    <li>nuPlan devkit, <em>time_to_collision_within_bound</em> — <a href="https://nuplan-devkit.readthedocs.io/en/latest/metrics_description.html">metric description</a></li>
+    <li>Planning-side timestamp synchronization for delay-compensated tracked objects — <a href="https://github.com/autowarefoundation/autoware_universe/pull/12979">autoware_universe PR #12979</a></li>
+  </ul>
+</section>
+
+</main>
+
+<footer class="doc">
+  <p>Driving-Aware Perception Metrics — design plan · draft for review.</p>
+</footer>
+
+</body>
+</html>

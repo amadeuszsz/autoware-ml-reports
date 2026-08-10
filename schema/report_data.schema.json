@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/tier4/autoware-ml-reports/schema/report_data.schema.json",
+  "title": "Metric report data file",
+  "description": "One file describes ONE release (one model per test set). scripts/build_report.py fills a copy of report_layout.html from one or more of these; passing several (oldest first) plots them as comparison bars, the last being the current release. Metric keys are exactly what the eval suites emit: '[filter/]name_range' (e.g. 'region_road/mAP_car_0m_50m'). NaN is encoded as null.",
+  "type": "object",
+  "required": ["schema_version", "test_sets"],
+  "properties": {
+    "schema_version": {"const": "0.1", "description": "Contract version; the builder rejects a version it does not understand."},
+    "repo_url": {"type": "string", "description": "Base URL for commit links (optional). Taken from the first file that sets it."},
+    "test_sets": {
+      "type": "array",
+      "description": "One entry per test set the release was evaluated on. Files are aligned across releases by test_set.id.",
+      "items": {
+        "type": "object",
+        "required": ["id", "version", "tasks", "models"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "description": "Stable id; the same id across files is one test set with one bar group per release."},
+          "label": {"type": "string", "description": "Display label (defaults to id)."},
+          "version": {"type": "string", "minLength": 1, "description": "Test-set version; releases with a different MAJOR are greyed as a different test set."},
+          "tasks": {"type": "array", "items": {"enum": ["det3d", "seg3d"]}, "description": "Which metric sections show for this test set."},
+          "dataset": {"type": ["object", "null"], "description": "Frames/scenes/sources/distributions (optional). Taken from the first file that provides it."},
+          "metric_spec": {"type": ["object", "null"], "description": "Versioned metric definitions {bundle?, metrics:{name:{version,params}}} (optional). From the first file that provides it."},
+          "models": {
+            "type": "array",
+            "description": "Usually one model (this release). The builder concatenates these across files in file order.",
+            "items": {
+              "type": "object",
+              "required": ["name", "metrics"],
+              "properties": {
+                "name": {"type": "string", "minLength": 1},
+                "model": {"type": "string", "description": "Model family; drives the base chart colour (releases of one family share it)."},
+                "date": {"type": "string"},
+                "test_set_version": {"type": "string", "description": "If its MAJOR differs from the test set's version, this release is greyed + flagged."},
+                "repo_commit": {"type": "string"},
+                "repo_commit_url": {"type": "string"},
+                "universe_commit": {"type": "string"},
+                "universe_commit_url": {"type": "string"},
+                "artifacts_url": {"type": "string"},
+                "eval_config": {"type": "string"},
+                "metrics": {
+                  "type": "object",
+                  "description": "bucket -> flat metric dict. Buckets: det3d, det3d_grouped, det3d_visible, det3d_overall, seg3d, seg3d_grouped.",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": {"type": ["number", "null"]}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

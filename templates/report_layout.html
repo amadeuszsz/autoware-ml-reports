@@ -1,0 +1,2936 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PTv3 Multi-Head — Model Report</title>
+<style>
+  :root {
+    --bg: #F6F7F5;
+    --surface: #FFFFFF;
+    --ink: #1B2420;
+    --ink2: #47524C;
+    --muted: #68736D;
+    --line: #DEE4DF;
+    --accent: #0F8A6C;
+    --accent-text: #0A6B52;
+    --accent-soft: #E7F2ED;
+    --ego: #2B5FD9;
+    --ego-soft: #E4EBFB;
+    --obj: #C2410C;
+    --obj-soft: #F9E9E0;
+    --danger: #B3261E;
+    --warn: #8A5A00;
+    --chip-bg: #EDF1EE;
+    --code-bg: #F0F3F0;
+    --shadow: 0 1px 3px rgba(27, 36, 32, 0.07);
+    /* chart series (validated categorical palette, fixed order — never re-assign) */
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --grid: #e1e0d9;
+    --good: #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --bg: #0F1512;
+      --surface: #161D19;
+      --ink: #E4EAE5;
+      --ink2: #A9B5AE;
+      --muted: #7E8A83;
+      --line: #28322C;
+      --accent: #2AA47B;
+      --accent-text: #56C79C;
+      --accent-soft: #14251E;
+      --ego: #6C8FE8;
+      --ego-soft: #1A2233;
+      --obj: #D2743F;
+      --obj-soft: #2E2018;
+      --danger: #E5776C;
+      --warn: #D8A04C;
+      --chip-bg: #1D2621;
+      --code-bg: #131A16;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --grid: #2c2c2a;
+      --good: #0ca30c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1512;
+    --surface: #161D19;
+    --ink: #E4EAE5;
+    --ink2: #A9B5AE;
+    --muted: #7E8A83;
+    --line: #28322C;
+    --accent: #2AA47B;
+    --accent-text: #56C79C;
+    --accent-soft: #14251E;
+    --ego: #6C8FE8;
+    --ego-soft: #1A2233;
+    --obj: #D2743F;
+    --obj-soft: #2E2018;
+    --danger: #E5776C;
+    --warn: #D8A04C;
+    --chip-bg: #1D2621;
+    --code-bg: #131A16;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --grid: #2c2c2a;
+    --good: #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  main, header.doc, footer.doc { max-width: 1440px; margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif; line-height: 1.2; text-wrap: balance; }
+  h1 { font-size: 2.3rem; font-weight: 700; margin: 0.4rem 0 0.6rem; }
+  h2 { font-size: 1.55rem; margin: 0 0 0.4rem; }
+  h3 { font-size: 1.15rem; margin: 1.4rem 0 0.5rem; }
+  h4 { margin: 0.2rem 0 0.4rem; font-size: 0.98rem; }
+  p { max-width: none; }
+  a { color: var(--accent-text); }
+  a:focus-visible, summary:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent-text); font-weight: 600; }
+  .standfirst { font-size: 1.08rem; color: var(--ink2); }
+  header.doc { padding-top: 48px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }
+
+  .chip {
+    display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em;
+    padding: 3px 10px; border-radius: 999px; background: var(--chip-bg); color: var(--ink2); white-space: nowrap;
+  }
+  .chip.det3d { background: var(--ego-soft); color: var(--ego); }
+  .chip.seg3d { background: var(--accent-soft); color: var(--accent-text); }
+  .chip.warn { background: var(--obj-soft); color: var(--obj); }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+  .chip-row .lead { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; align-self: center; }
+
+  section { margin: 52px 0; }
+  .sec-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+
+  nav.toc { margin: 28px 0 0; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+  nav.toc ol { margin: 6px 0 0; padding-left: 1.2rem; columns: 2; column-gap: 40px; }
+  nav.toc li { margin: 4px 0; break-inside: avoid; }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  @media (max-width: 640px) { nav.toc ol { columns: 1; } }
+
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; background: var(--surface); font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); margin: 16px 0; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); background: var(--chip-bg); position: sticky; top: 0; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin: 18px 0; box-shadow: var(--shadow); }
+  .metric-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+  .metric-id { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; font-weight: 700; font-size: 0.9rem; color: var(--accent-text); background: var(--accent-soft); border-radius: 6px; padding: 2px 8px; }
+  .metric h3 { margin: 0; flex: 1 1 auto; }
+  .metric > p { font-size: 0.95rem; }
+
+  details { margin: 10px 0 0; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  details summary { cursor: pointer; padding: 9px 14px; font-size: 0.85rem; font-weight: 600; color: var(--ink2); list-style-position: inside; }
+  details[open] summary { border-bottom: 1px solid var(--line); }
+  details .body { padding: 12px 16px; font-size: 0.9rem; color: var(--ink2); }
+  details .body p { margin: 8px 0; }
+  details .body ul, details .body ol { padding-left: 1.2rem; margin: 8px 0; }
+
+  .formula { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; font-size: 0.92rem; background: var(--code-bg); border-radius: 8px; padding: 10px 16px; margin: 10px 0; overflow-x: auto; color: var(--ink); }
+  code { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+
+  figure { margin: 18px 0; text-align: center; }
+  .fig-wrap { overflow-x: auto; text-align: center; }
+  figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption { font-size: 0.8rem; color: var(--muted); text-align: center; margin-top: 8px; max-width: 68ch; margin-left: auto; margin-right: auto; }
+  .svg-label { font-family: system-ui, sans-serif; font-size: 12px; fill: var(--ink2); }
+  .svg-label.small { font-size: 10.5px; fill: var(--muted); }
+  .svg-label.strong { font-weight: 600; fill: var(--ink); }
+  .svg-delta { font-family: system-ui, sans-serif; font-size: 10px; font-weight: 700; }
+  .svg-delta.up-good { fill: var(--good); }
+  .svg-delta.down-bad { fill: var(--danger); }
+  .svg-delta.flat { fill: var(--muted); }
+
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0; padding: 12px 18px; margin: 18px 0; font-size: 0.93rem; color: var(--ink2); }
+  .callout b { color: var(--accent-text); }
+  .callout.risk { border-left-color: var(--obj); background: var(--obj-soft); }
+  .callout.risk b { color: var(--obj); }
+
+  /* ------- report controls, tiles & charts ------- */
+  .controls {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 0;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  }
+  .seg-control { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); overflow: hidden; }
+  .seg-control button {
+    border: 0; background: transparent; color: var(--ink2); font: inherit; font-size: 0.82rem; font-weight: 600;
+    padding: 6px 14px; cursor: pointer;
+  }
+  .seg-control button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .controls .hint { font-size: 0.78rem; color: var(--muted); }
+
+  /* top bar: test-set tabs (primary) + range tabs (secondary) */
+  .topbar { position: sticky; top: 0; z-index: 30; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .topbar-inner { max-width: 1440px; margin: 0 auto; padding: 8px 24px; }
+  .topbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .topbar-row + .topbar-row { margin-top: 6px; }
+  .tab-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; min-width: 60px; }
+  .testset-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .topbar .hint { font-size: 0.76rem; color: var(--muted); }
+
+  /* test-set info */
+  .ts-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
+  .ts-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); }
+  .ts-stat .k { font-size: 0.74rem; color: var(--muted); font-weight: 600; }
+  .ts-stat .v { font-size: 1.5rem; font-weight: 600; margin-top: 2px; }
+  .dist-title { font-size: 0.9rem; font-weight: 600; margin: 16px 0 6px; }
+  .dist-row { display: grid; grid-template-columns: 170px 1fr 74px; align-items: center; gap: 8px; margin: 3px 0; font-size: 0.82rem; }
+  .dist-row .lbl { color: var(--ink2); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dist-track { background: var(--code-bg); border-radius: 4px; height: 14px; overflow: hidden; }
+  .dist-fill { height: 100%; background: var(--series-1); border-radius: 4px; }
+  .dist-row .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink2); }
+  .scene-list { margin: 6px 0; padding-left: 0; list-style: none; font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--ink2); }
+  .scene-db { margin: 8px 0; break-inside: avoid; }
+  .scene-db > b { display: block; color: var(--ink); font-family: system-ui, sans-serif; font-size: 0.82rem; margin-bottom: 3px; }
+  .scene-db > ul { columns: 2; column-gap: 24px; margin: 0; padding-left: 14px; list-style: none; }
+  .scene-db > ul li { break-inside: avoid; margin: 2px 0; }
+  @media (max-width: 640px) { .scene-db > ul { columns: 1; } .dist-row { grid-template-columns: 110px 1fr 60px; } }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); }
+  .tile .t-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+  .tile .t-task { font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .tile .t-value { font-size: 1.7rem; font-weight: 600; margin: 2px 0; }
+  .tile .t-delta { font-size: 0.8rem; font-weight: 600; }
+  .tile .t-delta.up-good { color: var(--good); }
+  .tile .t-delta.down-bad { color: var(--danger); }
+  .tile .t-delta.flat { color: var(--muted); }
+
+  .chart-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); margin: 14px auto; max-width: 720px; }
+  .chart-card h4 { font-family: inherit; font-weight: 600; font-size: 0.92rem; color: var(--ink); text-align: center; }
+  .chart-card .unit { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 8px; justify-content: center; }
+  .chart-legend .key { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--ink2); }
+  .chart-legend .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .chart-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }  /* stacked — one chart per row */
+  .chart-svg-wrap { overflow-x: auto; text-align: center; }
+  .cm-wrap { overflow-x: auto; }
+  .cm-cell { stroke: var(--surface); stroke-width: 1; }
+  .cm-cell.cm-diag { stroke: var(--ink); stroke-width: 1.5; }
+  .cm-label { font-family: system-ui, sans-serif; font-size: 10px; fill: var(--ink2); }
+  .cm-label.true { font-weight: 600; fill: var(--ink); }
+  .cm-val { font-family: system-ui, sans-serif; font-size: 9px; }
+  .cm-hit { fill: transparent; cursor: default; }
+  .cm-slice { margin: 6px 0 10px; }
+  .slot-note { color: var(--muted); font-size: 0.88rem; padding: 18px 8px; text-align: center; font-style: italic; }
+  .bar-hit { fill: transparent; cursor: default; }
+  .bar-hit:hover + .bar-mark, .bar-mark.hover { filter: brightness(1.12); }
+
+  #tooltip {
+    position: fixed; z-index: 50; pointer-events: none; display: none;
+    background: var(--ink); color: var(--bg);
+    border-radius: 8px; padding: 7px 10px; font-size: 0.78rem; max-width: 320px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  }
+  #tooltip .tt-value { font-weight: 700; font-size: 0.9rem; }
+  #tooltip .tt-label { opacity: 0.8; }
+
+  .appendix-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0; }
+  .appendix-tools input[type="search"] {
+    font: inherit; font-size: 0.88rem; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; min-width: 260px;
+  }
+  .appendix-tools .count { font-size: 0.78rem; color: var(--muted); }
+  .appendix-table td:first-child { font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; }
+  .appendix-table td.best { font-weight: 700; }
+  .appendix-table td.num { text-align: right; }
+  .appendix-table th.num { text-align: right; }
+  .appendix-table .dir { color: var(--muted); text-align: center; }
+  .appendix-wrap { max-height: 560px; overflow: auto; }
+
+  .registry-table .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: baseline; }
+  a.chip { text-decoration: none; }
+  a.chip[href] { color: var(--accent-text); }
+  a.chip[href]:hover { text-decoration: underline; }
+  a.chip:not([href]) { color: var(--muted); }
+
+  footer.doc { margin-top: 72px; padding-bottom: 56px; border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.82rem; color: var(--muted); }
+  footer.doc p { max-width: none; }
+
+  @media print {
+    body { background: #fff; }
+    nav.toc, .controls { display: none; }
+    .metric, .chart-card { break-inside: avoid; box-shadow: none; }
+    .appendix-wrap { max-height: none; overflow: visible; }
+  }
+</style>
+</head>
+<body>
+
+<header class="doc">
+  <div class="eyebrow">autoware-ml · multi-head PTv3 model report</div>
+  <h1>PTv3 Multi-Head — Model Report</h1>
+  <p class="standfirst">
+    Evaluation of the multi-head PTv3 model: where each build comes from, how it scores on the metrics we
+    gate and diagnose with, and how releases compare — detection and segmentation, whole-scene and inside
+    the areas that matter for driving. Pick a <b>test set</b> at the top; every section below follows it.
+  </p>
+  <div class="meta-row">
+    <span class="chip warn" data-bind="data-status">No data yet — paste results into the report-data block</span>
+    <span class="chip" data-bind="test-set">test set: —</span>
+    <a class="chip" id="commit-link" rel="noopener" target="_blank">commit: —</a>
+    <span class="chip" data-bind="metric-spec">metric-spec: —</span>
+    <span class="chip" data-bind="generated-date">date: fill on release</span>
+  </div>
+
+  <nav class="toc" aria-label="Table of contents">
+    <span class="sec-label">Contents</span>
+    <ol>
+      <li><a href="#testset">Test set</a></li>
+      <li><a href="#lineage">Release lineage</a></li>
+      <li><a href="#reading">How to read this report</a></li>
+      <li><a href="#summary">Headline summary</a></li>
+      <li><a href="#det3d">Detection metrics (det3d)</a></li>
+      <li><a href="#seg3d">Segmentation metrics (seg3d)</a></li>
+      <li><a href="#appendix">Full results (all metrics)</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============================================================ top bar -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-row">
+      <span class="tab-label">Test set</span>
+      <div class="seg-control testset-tabs" id="testset-tabs" role="group" aria-label="Test set"></div>
+      <span class="hint">Switching the test set changes every result below — and which sections apply.</span>
+    </div>
+    <div class="topbar-row">
+      <span class="tab-label">Range</span>
+      <div class="seg-control" id="range-tabs" role="group" aria-label="Distance range"></div>
+      <span class="hint">Scopes every chart, tile and delta. Axes keep their scale across tabs.</span>
+    </div>
+    <div class="topbar-row">
+      <span class="tab-label">Taxonomy</span>
+      <div class="seg-control" id="taxonomy-tabs" role="group" aria-label="Class taxonomy"></div>
+      <span class="hint">Per class scores every trained class; behaviour groups fold classes whose confusion does not change how the vehicle drives (a bus read as a truck is correct).</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 0 -->
+<section id="testset">
+  <div class="sec-label">Section 1</div>
+  <h2>Test set <span class="chip" data-bind="test-set-version">v—</span></h2>
+  <p>
+    The evaluation dataset the numbers below were computed on. Test sets are <b>versioned</b> — a model is
+    only comparable against another evaluated on the same test set at the same version; changing the frames,
+    scenes or labels bumps the version.
+  </p>
+  <div class="ts-stats" id="ts-stats"></div>
+  <div id="ts-distributions"></div>
+  <details id="ts-scenes-wrap">
+    <summary>Scenes in this test set (<span id="ts-scene-count">0</span>)</summary>
+    <div class="body">
+      <ul class="scene-list" id="ts-scene-list"></ul>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="lineage">
+  <div class="sec-label">Section 2</div>
+  <h2>Release lineage</h2>
+  <p>
+    Every model in this report is pinned to the exact code, artifacts and deployment target it belongs to.
+    The newest release is listed last; its bars are always the last color in every chart.
+  </p>
+  <div class="table-wrap">
+    <table class="registry-table">
+      <thead>
+        <tr><th>Model</th><th>Date</th><th>Trained at (autoware-ml)</th><th>Artifacts</th><th>Compatible autoware_universe</th><th>Eval config</th></tr>
+      </thead>
+      <tbody id="registry-body"></tbody>
+    </table>
+  </div>
+  <details>
+    <summary>How to add a release to this report</summary>
+    <div class="body">
+      <p>All data lives inline — the <code>&lt;script id="report-data"&gt;</code> block at the bottom holds
+      three <b>test sets</b> (Detection, Segmentation, Detection + Segmentation) with no data. Everything on
+      the page renders from that block; the top tabs switch test set, and each test set carries its own
+      dataset, versioned metric-spec and models.</p>
+      <div class="formula" style="white-space: pre">{
+  "repo_url": "https://github.com/&lt;org&gt;/autoware-ml",   // base for commit links (optional)
+  "test_sets": [
+    {
+      "id": "det3d", "label": "det3d", "version": "0.1",
+      "tasks": ["det3d"],                        // which sections show (det3d / seg3d)
+      "dataset": {
+        "num_frames": 5910, "num_scenes": 244, "num_objects": 89000,
+        "sources": [                               // one entry per source DB, scenes nested under it
+          { "db": "db_j6gen2_v1", "scenes": ["db_j6gen2_v1/&lt;uuid&gt;/0", "..."] },
+          { "db": "db_largebus_v1", "scenes": ["db_largebus_v1/&lt;uuid&gt;/0", "..."] }
+        ],
+        "distributions": [
+          { "title": "GT objects per class", "unit": "objects",
+            "bars": [ { "label": "car", "value": 41892 }, { "label": "pedestrian", "value": 18540 } ] }
+        ]
+      },
+      "metric_spec": {
+        "bundle": "1.0.0",
+        "metrics": { "corner_error": { "version": "1.0", "params": { "tp_threshold_m": 2.0 } } }
+      },
+      "models": [
+        { "name": "…", "date": "…",
+          "model": "PTv3",                       // model identity → base chart colour (releases share it)
+          "test_set_version": "0.1",             // optional; if its MAJOR differs from this test set's, muted + flagged
+          "repo_commit": "a1b2c3d",             // commit the model was trained at → header commit link + lineage
+          "repo_commit_url": "…",               // optional; else built from repo_url + /commit/&lt;hash&gt;
+          "artifacts_url": "…", "universe_commit": "…", "universe_commit_url": "…",
+          "eval_config": "…",
+          "metrics": { "det3d": { "mAP_0m_121m": 0.63, "…": 0 }, "seg3d": {} } }
+      ]
+    }
+  ]
+}</div>
+      <ol>
+        <li><b>Export the metric report</b> — the flat <code>key → value</code> dict the suites produce,
+            keyed exactly as emitted (<code>[filter/]name_range</code>). Convert every <code>NaN</code> to
+            <code>null</code> (JSON has no NaN; the report renders it as “–”, meaning no support there).</li>
+        <li><b>Pick the test set</b> the run belongs to and append a model object to its <code>models</code>
+            array (name, date, commit links, artifacts, eval config, and the
+            <code>metrics.det3d</code> / <code>metrics.seg3d</code> dicts). A test set's <code>tasks</code>
+            controls which metric sections appear for it.</li>
+        <li><b>Fill the test set's <code>dataset</code></b> once (frames, scenes, per-class distribution) and
+            its <code>metric_spec</code> once (shared by that set's models). Versions travel by metric
+            <b>name</b>, never a catalog id.</li>
+        <li>Everything updates from that block: the test-set tabs and info, the lineage row, a bar in every
+            chart, a column in the appendix, and the headline deltas comparing newest to previous.</li>
+        <li>Keep at most <b>4</b> models per test set; fold older releases out when adding a fifth — series
+            colors are fixed by position and more than four bars per group stops being readable.</li>
+      </ol>
+      <p>A test set is itself <b>versioned</b> (<code>version</code>): results are only comparable within the
+      same test set at the same version. Changing its frames, scenes or labels bumps the version — a new
+      test set entry, never an in-place edit — exactly as a metric change bumps the metric-spec.</p>
+      <p><b>Producing the block automatically.</b> Rather than hand-editing, keep each release as a JSON file
+      against the versioned report-data schema (documented in the metrics proposal),
+      then build a report by parsing one or more of them into a copy of this layout. Files are read
+      <b>in order</b>, so passing several releases plots them side by side for comparison (the last is the
+      current one):</p>
+      <div class="formula" style="white-space: pre">python scripts/build_report.py --layout templates/report_layout.html \
+    --out report.html  v0.1.json v0.2.json v0.3.json</div>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="reading">
+  <div class="sec-label">Section 3</div>
+  <h2>How to read this report</h2>
+  <p>
+    Five things repeat on every chart, so they are explained once here: the <b>range tabs</b>, the
+    <b>taxonomy tabs</b>, the <b>evaluation slices</b> (region and corridor filters), the
+    <b>direction of better</b>, and what a missing value means.
+  </p>
+
+  <h3>Range tabs</h3>
+  <p>
+    The sticky control bar scopes <em>every</em> chart, tile and delta on the page to one distance band
+    around the ego vehicle: the full evaluated area (0–121&nbsp;m) or one of three rings
+    (0–50, 50–90, 90–121&nbsp;m). A model that wins overall can still regress at far range — switch the tab
+    to check. Chart axes keep the same scale across tabs, so bar lengths stay comparable when switching.
+  </p>
+
+  <h3>Taxonomy tabs</h3>
+  <p>
+    The same metrics are computed over two class taxonomies, and the taxonomy tab scopes the whole page to
+    one of them:
+  </p>
+  <ul>
+    <li><b>Per class</b> — every trained class scored on its own. A car predicted as a truck is a false
+        positive for <code>car</code> and a false negative for <code>truck</code>. This is the strict view
+        the model is trained and optimised against.</li>
+    <li><b>Behaviour groups</b> — classes whose confusion does not change how the vehicle drives are folded
+        into one group before scoring, so intra-group confusion becomes a hit: a bus predicted as a truck
+        is correct for <code>vehicle</code>. Groups are prefixed <code>grouped_</code> (even singletons such
+        as <code>grouped_pedestrian</code>, which never fold into anything). This view answers "does the
+        model see the <em>kind</em> of thing that matters for the driving decision", separate from whether
+        it names it exactly.</li>
+  </ul>
+  <p>
+    Both taxonomies apply the same ground-truth filters (point count, range) to the trained classes; the
+    fold happens afterwards, at metric time. The grouping is a reporting axis, not a training change — the
+    model still predicts the trained classes.
+  </p>
+
+  <h3>Evaluation slices</h3>
+  <p>
+    Besides the whole scene, selected metrics are reported inside lanelet-map regions and inside the
+    corridor — the ego's forward-reachable path on the road. A slice never changes the metric — only
+    <em>which</em> objects or points it counts. Scenes that ship no lanelet map are excluded from the
+    region and corridor slices (their objects and points still count whole-scene), and each filter logs
+    how many frames it ran on — so a slice over partial map coverage is visible, and its class mix can
+    differ from whole-scene.
+  </p>
+  <div class="chip-row">
+    <span class="lead">Slices in this report</span>
+    <span class="chip">whole scene — no filter</span>
+    <span class="chip">road — lanelet regions [road, road_shoulder, crosswalk]</span>
+    <span class="chip">walkway — [walkway] lanelets (sparse by design)</span>
+    <span class="chip">corridor — ego reachable region ∩ road (lane speed limit, bounded steering)</span>
+  </div>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 660 230" width="660" height="230" role="img" aria-labelledby="fig-region-title">
+      <title id="fig-region-title">Bird's-eye view of the lanelet regions: a road band including a crosswalk stripe, and a separate walkway band; objects are assigned to road, walkway, or neither, and metrics run per region. A car whose center is off the road but whose footprint overhangs it is still included, because membership is any footprint overlap (no threshold), not the center.</title>
+      <rect x="10" y="96" width="640" height="70" rx="6" fill="var(--ego)" opacity="0.14"/>
+      <line x1="10" y1="131" x2="650" y2="131" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.5"/>
+      <text x="24" y="120" class="svg-label small" fill="var(--ego)">road (road · road_shoulder · crosswalk)</text>
+      <rect x="418" y="96" width="30" height="70" fill="var(--ego)" opacity="0.22"/>
+      <text x="433" y="90" class="svg-label small" fill="var(--ego)" text-anchor="middle">crosswalk</text>
+      <rect x="10" y="60" width="640" height="26" rx="5" fill="var(--accent)" opacity="0.16"/>
+      <text x="24" y="52" class="svg-label small" fill="var(--accent-text)">walkway (pedestrian-only)</text>
+      <rect x="40" y="128" width="44" height="24" rx="4" fill="var(--ego)"/>
+      <text x="62" y="182" class="svg-label small" text-anchor="middle">ego</text>
+      <rect x="220" y="112" width="40" height="22" rx="3" fill="var(--obj)"/>
+      <rect x="330" y="134" width="40" height="22" rx="3" fill="var(--obj)"/>
+      <text x="290" y="182" class="svg-label small" text-anchor="middle">road slice</text>
+      <circle cx="520" cy="73" r="8" fill="var(--obj)"/>
+      <text x="520" y="52" class="svg-label small" text-anchor="middle">walkway slice</text>
+      <rect x="560" y="14" width="40" height="18" rx="3" fill="var(--muted)" opacity="0.5"/>
+      <text x="548" y="27" class="svg-label small" text-anchor="end">off-map → whole-scene only</text>
+      <!-- car with its center off the road but its footprint overhanging onto it → included (any overlap) -->
+      <rect x="452" y="159" width="52" height="28" rx="3" fill="var(--obj)" opacity="0.9" stroke="var(--ego)" stroke-width="2"/>
+      <line x1="444" y1="166" x2="512" y2="166" stroke="var(--ego)" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <circle cx="478" cy="173" r="3" fill="var(--danger)"/>
+      <text x="478" y="152" class="svg-label strong" fill="var(--obj)" text-anchor="middle">overhangs road → included</text>
+      <text x="478" y="207" class="svg-label small" fill="var(--muted)" text-anchor="middle">● center off-road</text>
+    </svg>
+    </div>
+    <figcaption>The region slices. Crosswalks count as road — that is where the car drives. A detection box
+    counts for a region when <b>any part of its footprint overlaps</b> it — no threshold: the car above sits
+    mostly off the road but overhangs it, so it is still <b>included</b> even though its center is
+    off-road.</figcaption>
+  </figure>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 660 250" width="660" height="250" role="img" aria-labelledby="fig-margin-title">
+      <title id="fig-margin-title">The segmentation border margin erodes only the outer border of the union of all mapped regions: strips along the top of the walkway and the bottom of the road are excluded, while the internal road-to-walkway border keeps its points on both sides — no dead gap between adjacent regions.</title>
+      <rect x="10" y="50" width="640" height="42" fill="var(--accent)" opacity="0.16"/>
+      <text x="24" y="78" class="svg-label small" fill="var(--accent-text)">walkway</text>
+      <rect x="10" y="92" width="640" height="98" fill="var(--ego)" opacity="0.14"/>
+      <text x="24" y="150" class="svg-label small" fill="var(--ego)">road</text>
+      <rect x="10" y="50" width="640" height="12" fill="var(--danger)" opacity="0.14"/>
+      <rect x="10" y="178" width="640" height="12" fill="var(--danger)" opacity="0.14"/>
+      <line x1="10" y1="62" x2="650" y2="62" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <line x1="10" y1="178" x2="650" y2="178" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="340" y="174" class="svg-label small" fill="var(--danger)" text-anchor="middle">outer border ⊖ margin (expand: false) → excluded</text>
+      <line x1="10" y1="92" x2="650" y2="92" stroke="var(--ink2)" stroke-width="1.5"/>
+      <text x="340" y="110" class="svg-label small" text-anchor="middle">internal border (road ↔ walkway) — not eroded, no gap</text>
+      <path d="M 626 178 L 634 178 L 634 190 L 626 190" fill="none" stroke="var(--danger)" stroke-width="1.5"/>
+      <text x="620" y="188" class="svg-label small" fill="var(--danger)" text-anchor="end">margin</text>
+      <circle cx="460" cy="87" r="5" fill="var(--obj)"/>
+      <circle cx="460" cy="98" r="5" fill="var(--obj)"/>
+      <text x="472" y="90" class="svg-label small">kept — both sides</text>
+      <circle cx="150" cy="56" r="5" fill="var(--obj)" opacity="0.4"/>
+      <text x="162" y="60" class="svg-label small" fill="var(--muted)">dropped</text>
+      <circle cx="150" cy="184" r="5" fill="var(--obj)" opacity="0.4"/>
+      <text x="162" y="188" class="svg-label small" fill="var(--muted)">dropped</text>
+      <circle cx="150" cy="135" r="5" fill="var(--obj)"/>
+      <text x="162" y="139" class="svg-label small">kept</text>
+      <text x="330" y="236" class="svg-label small" text-anchor="middle">erosion applies to the union of ALL regions — never per region</text>
+    </svg>
+    </div>
+    <figcaption>The <b>segmentation border margin</b> (<code>margin: 0.2, expand: false</code>) excludes the
+    noisy strip along the <b>outer</b> border of the mapped surface. Because the erosion is applied to the
+    union of all regions — never per region — the internal road ↔ walkway border keeps its points on both
+    sides, so no dead gap opens between adjacent regions. Detection region filters use
+    <code>margin: 0</code>.</figcaption>
+  </figure>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 660 220" width="660" height="220" role="img" aria-labelledby="fig-corridor-title">
+      <title id="fig-corridor-title">Bird's-eye view: the corridor is the ego reachable region — everything reachable within the horizon at the lane speed limit under bounded steering, hard-clipped to the road; an object inside is kept, one off the road or beyond reach is dropped.</title>
+      <defs><clipPath id="corridor-clip"><rect x="8" y="70" width="644" height="84"/></clipPath></defs>
+      <rect x="8" y="34" width="644" height="36" fill="var(--chip-bg)" opacity="0.55"/>
+      <text x="16" y="28" class="svg-label small">sidewalk</text>
+      <rect x="8" y="70" width="644" height="84" rx="6" fill="var(--chip-bg)"/>
+      <text x="644" y="148" class="svg-label small" text-anchor="end">road (drivable)</text>
+      <!-- reachable region drawn extending off-road, then hard-clipped to the road -->
+      <g clip-path="url(#corridor-clip)">
+        <path d="M 86 112 C 146 112 196 62 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218 C 196 162 146 112 86 112 Z" fill="var(--ego)" opacity="0.16"/>
+        <path d="M 86 112 C 146 112 196 62 206 6" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 86 112 C 146 112 196 162 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>
+      </g>
+      <rect x="40" y="100" width="46" height="24" rx="4" fill="var(--ego)"/>
+      <text x="63" y="94" class="svg-label strong" text-anchor="middle">ego</text>
+      <rect x="268" y="102" width="40" height="20" rx="3" fill="var(--obj)"/>
+      <text x="288" y="96" class="svg-label strong" fill="var(--obj)" text-anchor="middle">in path → kept</text>
+      <rect x="268" y="42" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
+      <text x="366" y="56" class="svg-label small" fill="var(--muted)">off road → dropped</text>
+      <rect x="560" y="102" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
+      <text x="580" y="172" class="svg-label small" fill="var(--muted)" text-anchor="middle">beyond reach → dropped</text>
+      <text x="150" y="206" class="svg-label small">lane speed limit + tightest feasible turn, clipped at the road edge</text>
+    </svg>
+    </div>
+    <figcaption>The corridor slice: the ego's <b>forward-reachable band</b> (longitudinal reach at worst-case
+    speed, bounded lateral half-width) intersected with the <b>road lanelet</b>, so it follows the road on
+    bends. It describes objects and points in the ego's path <em>independent of how the vehicle was actually
+    driven</em>.</figcaption>
+  </figure>
+
+  <h3>Direction, bold, and missing values</h3>
+  <ul>
+    <li><b>Direction of better</b> — score-type metrics (AP, IoU, NDS, AUROC…) are higher-is-better ↑;
+        error-type metrics (mATE, corner error, flip rate, ECE, error rates…) are lower-is-better ↓. Each
+        chart states its direction; the appendix bolds the best value per row accordingly.</li>
+    <li><b>Green / red delta</b> — the small <span style="color:var(--good);font-weight:700">▲</span> /
+        <span style="color:var(--danger);font-weight:700">▼</span> beside the newest release's bar is its
+        change against the previous release, coloured by that metric's direction (green = better, red =
+        worse). It is omitted when there is no previous release or the previous one ran on a different
+        (incompatible) test set.</li>
+    <li><b>Missing value (–)</b> — the metric had no support there: an empty slice (walkway in scenes
+        without walkway lanelets), an empty range bin, or a class with no ground truth. It is
+        <em>absence of data, not a zero score</em>.</li>
+    <li><b>Grayed “not measured” panels</b> — the metric exists in the framework but was disabled for this
+        run; the panel stays so the report layout is stable across releases.</li>
+    <li><b>Configuration chips</b> — every metric section lists the exact evaluation settings it ran with
+        (thresholds, margins, horizons), so numbers are only ever compared like-for-like.</li>
+  </ul>
+
+  <h3>How releases are coloured</h3>
+  <p>
+    On every chart, <b>colour identifies the model</b> and <b>brightness identifies the release</b>, so a
+    model's history and a cross-model comparison (e.g. PTv3 vs BEVFusion) read at a glance:
+  </p>
+  <ul>
+    <li>Each distinct model gets one <b>base hue</b> — PTv3, BEVFusion, … each a colour of its own.</li>
+    <li>The <b>newest release</b> of a model keeps the full, vivid base hue, so it stands out as the one
+        under review.</li>
+    <li><b>Earlier releases</b> of the same model are the same hue <b>muted toward the surface</b> — present
+        for the trend, visually stepped back so they don't compete with the new one.</li>
+    <li>A release evaluated on a <b>different test-set major version</b> (whose numbers may not be
+        comparable) is muted <b>much further</b> and tagged <span class="chip">different test set</span> — it
+        still appears, but the strong fade warns that comparing it may be inappropriate.</li>
+  </ul>
+  <p style="font-size:0.9rem;color:var(--ink2)">
+    A model's identity comes from its <code>model</code> field (releases sharing it share a hue); the test-set
+    comparability from an optional per-release <code>test_set_version</code> checked against the active test
+    set's version.
+  </p>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="summary">
+  <div class="sec-label">Section 4</div>
+  <h2>Headline summary</h2>
+  <p>
+    The newest release at a glance; each delta compares against the previous release in Section 1 and is
+    colored by whether the move is an improvement for that metric.
+  </p>
+  <div class="tiles" id="summary-tiles"></div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="det3d" data-task="det3d">
+  <div class="sec-label">Section 5</div>
+  <h2>Detection metrics <span class="chip det3d">det3d</span></h2>
+  <p>
+    All detection metrics share one matching backbone: predictions are greedily matched to ground truth by
+    BEV center distance, and every metric below reads those matches. Ground truth uses the canonical
+    7-class taxonomy after name mapping and the geometric truck+trailer merge.
+  </p>
+  <div class="chip-row">
+    <span class="lead">Shared config</span>
+    <span class="chip">classes: car · truck · bus · bicycle · pedestrian · traffic_cone · barrier</span>
+    <span class="chip">eval range 121 m per class</span>
+    <span class="chip">GT min lidar points ≥ 2</span>
+    <span class="chip">match: BEV center distance</span>
+  </div>
+
+  <!-- ------- 4.1 mAP ------- -->
+  <article class="metric" id="det-ap">
+    <div class="metric-head">
+      <h3>Average precision — mAP and per-class AP</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      The core detection score: for each class, predictions are ranked by confidence and matched to ground
+      truth; the area under the resulting precision–recall curve is the AP. It rewards finding every object
+      (recall) without inventing ones that are not there (precision). mAP averages over the four match
+      thresholds and then over classes — the single number, with the per-class bars showing who pays for it.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 212" width="660" height="212" role="img" aria-labelledby="fig-map-title">
+        <title id="fig-map-title">Three bird's-eye vignettes of the 2-meter match gate: a prediction whose center is 0.8 meters from the ground-truth center is a true positive; one 3 meters off misses the gate and counts as a false positive plus a missed ground truth; a prediction with no ground truth nearby is a phantom false positive.</title>
+        <!-- panel 1: TP -->
+        <rect x="8" y="8" width="204" height="178" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="110" y="28" class="svg-label strong" text-anchor="middle">center 0.8 m off</text>
+        <circle cx="85" cy="102" r="40" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <line x1="85" y1="102" x2="56.7" y2="73.7" stroke="var(--muted)" stroke-width="1"/>
+        <text x="46" y="66" class="svg-label small">2 m</text>
+        <rect x="40" y="82" width="90" height="40" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+        <g transform="translate(101 110) rotate(7)">
+          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="var(--obj)" opacity="0.10"/>
+          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+        </g>
+        <line x1="85" y1="102" x2="101" y2="110" stroke="var(--danger)" stroke-width="2.5"/>
+        <circle cx="85" cy="102" r="3" fill="var(--ink2)"/>
+        <circle cx="101" cy="110" r="3" fill="var(--obj)"/>
+        <text x="110" y="152" class="svg-label small" text-anchor="middle">Δ = 0.8 m &lt; 2 m — inside the gate</text>
+        <text x="110" y="172" class="svg-label strong" fill="var(--accent-text)" text-anchor="middle">→ TP (matched)</text>
+        <!-- panel 2: near miss -->
+        <rect x="228" y="8" width="204" height="178" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="330" y="28" class="svg-label strong" text-anchor="middle">center 3.0 m off</text>
+        <circle cx="295" cy="102" r="40" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <rect x="250" y="82" width="90" height="40" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+        <g transform="translate(355 112) rotate(-5)">
+          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="var(--obj)" opacity="0.10"/>
+          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+        </g>
+        <line x1="295" y1="102" x2="355" y2="112" stroke="var(--danger)" stroke-width="2.5"/>
+        <circle cx="295" cy="102" r="3" fill="var(--ink2)"/>
+        <circle cx="355" cy="112" r="3" fill="var(--obj)"/>
+        <text x="322" y="93" class="svg-label small" fill="var(--danger)">Δ = 3.0 m</text>
+        <text x="330" y="152" class="svg-label small" text-anchor="middle">outside the 2 m gate — only the 4 m curve matches it</text>
+        <text x="330" y="172" class="svg-label strong" fill="var(--danger)" text-anchor="middle">→ FP + missed GT (FN)</text>
+        <!-- panel 3: phantom -->
+        <rect x="448" y="8" width="204" height="178" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="550" y="28" class="svg-label strong" text-anchor="middle">phantom prediction</text>
+        <g transform="translate(550 104) rotate(4)">
+          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="var(--obj)" opacity="0.10"/>
+          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+        </g>
+        <circle cx="550" cy="104" r="3" fill="var(--obj)"/>
+        <text x="550" y="152" class="svg-label small" text-anchor="middle">no ground truth anywhere near</text>
+        <text x="550" y="172" class="svg-label strong" fill="var(--danger)" text-anchor="middle">→ FP</text>
+        <!-- legend -->
+        <text x="330" y="204" class="svg-label small" text-anchor="middle">dashed = ground truth · solid = prediction · dotted circle = 2 m match gate around the GT center</text>
+      </svg>
+      </div>
+      <figcaption>Matching at the 2 m threshold (“AP@2 m”): a prediction is a TP when its <b>center</b>
+      falls inside a GT's 2 m gate; every unmatched prediction is an FP, every unclaimed GT an FN — even
+      when the boxes overlap, like the near miss in the middle. Sweeping the confidence threshold turns
+      these counts into a precision–recall curve; AP is its area, and mAP averages the four gates
+      {0.5, 1, 2, 4} m and then the classes.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">thresholds ∅ {0.5, 1, 2, 4} m, averaged</span>
+      <span class="chip">higher is better ↑</span>
+    </div>
+    <div class="chart-card">
+      <h4>Per-class AP — whole scene <span class="unit">AP, 0–1, higher ↑</span></h4>
+      <div data-chart="det-ap-class"></div>
+    </div>
+    <div class="chart-card">
+      <h4>mAP by slice — whole scene vs road <span class="unit">mAP, 0–1, higher ↑</span></h4>
+      <div data-chart="det-ap-slices"></div>
+    </div>
+    <div class="chart-card">
+      <h4>Per-class AP — road slice <span class="unit">higher ↑</span></h4>
+      <div data-chart="det-ap-class-road"></div>
+    </div>
+  </article>
+
+  <!-- ------- 4.2 heading-aware ------- -->
+  <article class="metric" id="det-heading">
+    <div class="metric-head">
+      <h3>Heading-aware quality — mAPH and NDS</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      mAPH is AP where every true positive is discounted by its heading error — a detection pointing the
+      wrong way earns less credit, because downstream tracking and prediction consume the heading. NDS
+      blends mAP with the true-positive errors (translation, scale, orientation, velocity) into one
+      composite release number.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 150" width="560" height="150" role="img" aria-labelledby="fig-aph-title">
+        <title id="fig-aph-title">Three detections with increasing heading error earn decreasing credit: aligned earns full credit, 45 degrees earns 0.85, reversed earns zero.</title>
+        <g transform="translate(90 62)">
+          <rect x="-40" y="-18" width="80" height="36" rx="4" fill="var(--accent)" opacity="0.15" stroke="var(--accent)" stroke-width="1.5"/>
+          <line x1="0" y1="0" x2="34" y2="0" stroke="var(--ink2)" stroke-width="2"/>
+          <path d="M 27 -5 L 34 0 L 27 5" fill="none" stroke="var(--ink2)" stroke-width="2"/>
+          <text x="0" y="42" class="svg-label small" text-anchor="middle">aligned → credit 1.0</text>
+        </g>
+        <g transform="translate(280 62)">
+          <rect x="-40" y="-18" width="80" height="36" rx="4" fill="var(--warn)" opacity="0.12" stroke="var(--warn)" stroke-width="1.5"/>
+          <line x1="0" y1="0" x2="24" y2="-24" stroke="var(--ink2)" stroke-width="2"/>
+          <path d="M 15 -22 L 24 -24 L 22 -15" fill="none" stroke="var(--ink2)" stroke-width="2"/>
+          <text x="0" y="42" class="svg-label small" text-anchor="middle">45° off → credit 0.85</text>
+        </g>
+        <g transform="translate(470 62)">
+          <rect x="-40" y="-18" width="80" height="36" rx="4" fill="var(--danger)" opacity="0.12" stroke="var(--danger)" stroke-width="1.5"/>
+          <line x1="0" y1="0" x2="-34" y2="0" stroke="var(--danger)" stroke-width="2"/>
+          <path d="M -27 -5 L -34 0 L -27 5" fill="none" stroke="var(--danger)" stroke-width="2"/>
+          <text x="0" y="42" class="svg-label small" text-anchor="middle">reversed → credit 0.0</text>
+        </g>
+        <text x="280" y="128" class="svg-label small" text-anchor="middle">credit = (1 + cos Δψ) / 2 — the same detection, weighted by how well it points</text>
+      </svg>
+      </div>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">same matches & thresholds as mAP</span>
+      <span class="chip">NDS: 5/10 weight on mAP, 1/10 per TP error</span>
+      <span class="chip">higher is better ↑</span>
+    </div>
+    <div class="chart-card">
+      <h4>Heading-aware scores <span class="unit">0–1, higher ↑</span></h4>
+      <div data-chart="det-heading-scores"></div>
+    </div>
+  </article>
+
+  <!-- ------- 4.3 TP errors ------- -->
+  <article class="metric" id="det-tp">
+    <div class="metric-head">
+      <h3>True-positive errors — mATE, mASE, mAOE, mAVE</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      For the objects the model <em>did</em> find, how good are the boxes? Four independent error axes:
+      center position (ATE, meters), size (ASE, 1−IoU after alignment), orientation (AOE, radians) and
+      velocity (AVE, m/s). Finding everything with sloppy boxes and finding less with tight boxes are
+      different failure modes — these separate them.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 640 170" width="640" height="170" role="img" aria-labelledby="fig-tp-title">
+        <title id="fig-tp-title">Three panels: translation error as an arrow between box centers, scale error as a size mismatch of aligned boxes, orientation error as an angle between headings.</title>
+        <g transform="translate(105 75)">
+          <rect x="-60" y="-26" width="120" height="52" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 5"/>
+          <rect x="-38" y="-14" width="120" height="52" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          <circle cx="0" cy="0" r="3" fill="var(--ink2)"/>
+          <circle cx="22" cy="12" r="3" fill="var(--obj)"/>
+          <path d="M 0 0 L 22 12" stroke="var(--danger)" stroke-width="2.5"/>
+          <text x="0" y="70" class="svg-label small" text-anchor="middle">ATE — center offset (m)</text>
+        </g>
+        <g transform="translate(320 75)">
+          <rect x="-60" y="-26" width="120" height="52" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 5"/>
+          <rect x="-44" y="-18" width="88" height="36" rx="3" fill="var(--obj)" opacity="0.12" stroke="var(--obj)" stroke-width="2"/>
+          <text x="0" y="70" class="svg-label small" text-anchor="middle">ASE — size mismatch (1 − IoU)</text>
+        </g>
+        <g transform="translate(535 75)">
+          <rect x="-60" y="-26" width="120" height="52" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 5"/>
+          <rect x="-60" y="-26" width="120" height="52" rx="3" fill="none" stroke="var(--obj)" stroke-width="2" transform="rotate(14)"/>
+          <path d="M 46 0 A 46 46 0 0 1 44.6 11.1" fill="none" stroke="var(--danger)" stroke-width="2.5"/>
+          <text x="0" y="70" class="svg-label small" text-anchor="middle">AOE — heading angle (rad)</text>
+        </g>
+      </svg>
+      </div>
+      <figcaption>The three geometric error axes on matched boxes; AVE (not drawn) is the same idea for the
+      velocity vector, in m/s.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">TPs selected at recall ≥ 0.10 (variant: default)</span>
+      <span class="chip">variants medium (≥ 0.40) & optimal-F1 in appendix</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card"><h4>mATE <span class="unit">m, lower ↓</span></h4><div data-chart="det-tp-ate"></div></div>
+      <div class="chart-card"><h4>mASE <span class="unit">1−IoU, lower ↓</span></h4><div data-chart="det-tp-ase"></div></div>
+      <div class="chart-card"><h4>mAOE <span class="unit">rad, lower ↓</span></h4><div data-chart="det-tp-aoe"></div></div>
+      <div class="chart-card"><h4>mAVE <span class="unit">m/s, lower ↓</span></h4><div data-chart="det-tp-ave"></div></div>
+    </div>
+  </article>
+
+  <!-- ------- 4.4 corner ------- -->
+  <article class="metric" id="det-a1">
+    <div class="metric-head">
+      <h3>Corner displacement error</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Position, size and yaw errors interact — a box can have a perfect center and still put its corners in
+      the wrong lane. Corner displacement folds all three into one number in meters, measured where planning
+      collides with things: the box outline. A 3° yaw error on a 20&nbsp;m truck shifts a corner ~0.5&nbsp;m,
+      and that shows up here directly.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 180" width="560" height="180" role="img" aria-labelledby="fig-a1-title">
+        <title id="fig-a1-title">A ground-truth truck box and a predicted box rotated by a few degrees share a center, but the corners are displaced by half a meter.</title>
+        <g transform="translate(280 95)">
+          <rect x="-150" y="-30" width="300" height="60" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+          <rect x="-150" y="-30" width="300" height="60" rx="3" fill="var(--obj)" opacity="0.13" transform="rotate(8)"/>
+          <rect x="-150" y="-30" width="300" height="60" rx="3" fill="none" stroke="var(--obj)" stroke-width="2" transform="rotate(8)"/>
+          <circle cx="150" cy="-30" r="3.5" fill="var(--ink2)"/>
+          <circle cx="152.7" cy="-8.8" r="3.5" fill="var(--obj)"/>
+          <path d="M 150 -30 L 152.7 -8.8" stroke="var(--danger)" stroke-width="2.5"/>
+          <text x="176" y="-16" class="svg-label strong">δ ≈ 0.5 m</text>
+        </g>
+        <text x="130" y="40" class="svg-label small">ground truth (dashed)</text>
+        <text x="330" y="168" class="svg-label small">prediction, 3° yaw error — angle exaggerated for visibility</text>
+      </svg>
+      </div>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">TPs matched at 2 m center distance</span>
+      <span class="chip">cyclic corner assignment (min over 4 rotations)</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Corner error <span class="unit">m, lower ↓</span></h4>
+      <div data-chart="det-a1"></div>
+    </div>
+  </article>
+
+  <!-- ------- 4.5 flip ------- -->
+  <article class="metric" id="det-a2">
+    <div class="metric-head">
+      <h3>Heading-flip rate</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      A 180° heading flip leaves the box outline almost unchanged, so corner error forgives it — but it inverts the
+      object's perceived direction of travel and is a prime cause of tracking failures. Any true positive
+      whose heading error passes a quarter turn counts as one flip — a uniform +1 however far past 90°,
+      because wrong-way is wrong-way regardless of degree.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 170" width="560" height="170" role="img" aria-labelledby="fig-a2-title">
+        <title id="fig-a2-title">A ground-truth box and a predicted box share the same outline but point in opposite directions: corner displacement is near zero, yet the heading is reversed, so it counts as one flip.</title>
+        <g transform="translate(210 80)">
+          <rect x="-70" y="-24" width="140" height="48" rx="4" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+          <rect x="-70" y="-24" width="140" height="48" rx="4" fill="var(--obj)" opacity="0.10"/>
+          <rect x="-70" y="-24" width="140" height="48" rx="4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          <line x1="0" y1="0" x2="60" y2="0" stroke="var(--ink2)" stroke-width="2"/>
+          <path d="M 52 -6 L 60 0 L 52 6" fill="none" stroke="var(--ink2)" stroke-width="2"/>
+          <text x="78" y="-30" class="svg-label small" fill="var(--ink2)">GT heading →</text>
+          <line x1="0" y1="12" x2="-60" y2="12" stroke="var(--obj)" stroke-width="2"/>
+          <path d="M -52 6 L -60 12 L -52 18" fill="none" stroke="var(--obj)" stroke-width="2"/>
+          <text x="-78" y="34" class="svg-label small" fill="var(--obj)" text-anchor="end">prediction ← reversed</text>
+        </g>
+        <text x="210" y="150" class="svg-label small" text-anchor="middle">same outline → corner error ≈ 0</text>
+        <text x="440" y="80" class="svg-label strong" fill="var(--danger)" text-anchor="middle">heading reversed</text>
+        <text x="440" y="98" class="svg-label strong" fill="var(--danger)" text-anchor="middle">→ flip +1</text>
+      </svg>
+      </div>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">TPs matched at 2 m</span>
+      <span class="chip">flip when |Δψ| &gt; π/2</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Heading-flip rate <span class="unit">fraction of TPs, lower ↓</span></h4>
+      <div data-chart="det-a2"></div>
+    </div>
+  </article>
+
+  <!-- ------- 4.6 nearest surface ------- -->
+  <article class="metric" id="det-a3">
+    <div class="metric-head">
+      <h3>Signed nearest-surface error</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Stopping distance is computed against the <em>nearest face</em> of an object, not its center. The same
+      1&nbsp;m center error is harmless if the box is too long at the back, and dangerous if the near face is
+      placed 1&nbsp;m too far away — ego brakes late. The sign of this error is the safety signal. The measure
+      is <b>radial</b> — the distance from the ego origin to the nearest point of the box footprint — so it
+      applies to objects in any direction (beside and behind, not only ahead); the figure shows an object in
+      front for clarity.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 620 150" width="620" height="150" role="img" aria-labelledby="fig-a3-title">
+        <title id="fig-a3-title">Ego on the left; the predicted box places the near face farther than ground truth, producing a positive error that means braking later.</title>
+        <rect x="20" y="58" width="44" height="24" rx="4" fill="var(--ego)"/>
+        <text x="42" y="50" class="svg-label strong" text-anchor="middle">ego</text>
+        <rect x="380" y="52" width="120" height="36" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+        <rect x="424" y="52" width="120" height="36" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+        <path d="M 64 106 L 380 106" stroke="var(--ink2)" stroke-width="1.5"/>
+        <path d="M 64 100 L 64 112 M 380 100 L 380 112" stroke="var(--ink2)" stroke-width="1.5"/>
+        <text x="222" y="122" class="svg-label small" text-anchor="middle">d_gt (dashed = ground truth near face)</text>
+        <path d="M 64 30 L 424 30" stroke="var(--obj)" stroke-width="1.5"/>
+        <path d="M 64 24 L 64 36 M 424 24 L 424 36" stroke="var(--obj)" stroke-width="1.5"/>
+        <text x="244" y="22" class="svg-label small" text-anchor="middle">d_pred (predicted near face)</text>
+        <text x="560" y="74" class="svg-label strong" fill="var(--danger)">err &gt; 0</text>
+        <text x="560" y="92" class="svg-label small">= brakes late</text>
+      </svg>
+      </div>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">TPs matched at 2 m</span>
+      <span class="chip">signed tails p5 / p95, plus max |·|</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Nearest-surface error tails <span class="unit">m, lower ↓</span></h4>
+      <div data-chart="det-a3"></div>
+    </div>
+  </article>
+
+  <!-- ------- 4.7 critical ------- -->
+  <article class="metric" id="det-b1">
+    <div class="metric-head">
+      <h3>Critical FP / FN — errors in the ego corridor</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Two numbers we never average: false positives <em>in ego's path</em> cause phantom braking
+      (usability); false negatives <em>in ego's path</em> mean driving toward something we can't see
+      (safety). "In path" is the one <b>reachability model</b>: every agent and ego propagated at the lane
+      speed limit under bounded steering, and an object is critical when its reachable set can meet ego's
+      within the horizon — a finite time-to-collision. Both are counted per frame over frames whose scene
+      has a lanelet map.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 232" width="660" height="232" role="img" aria-labelledby="fig-b1-scene-title">
+        <title id="fig-b1-scene-title">Two bird's-eye scenes. Left: a predicted box sits in the ego path with no real object there, so ego brakes for a ghost — a false positive, a usability failure. Right: a real object sits in the ego path but the model missed it, so ego drives into it — a false negative, a safety failure.</title>
+        <rect x="8" y="8" width="310" height="216" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="163" y="32" class="svg-label strong" text-anchor="middle">Phantom brake — false positive</text>
+        <rect x="22" y="112" width="288" height="44" rx="10" fill="var(--ego)" opacity="0.14"/>
+        <text x="270" y="103" class="svg-label small" text-anchor="middle">ego path →</text>
+        <line x1="14" y1="126" x2="32" y2="126" stroke="var(--danger)" stroke-width="2.5"/>
+        <line x1="14" y1="150" x2="32" y2="150" stroke="var(--danger)" stroke-width="2.5"/>
+        <rect x="34" y="120" width="42" height="28" rx="4" fill="var(--ego)"/>
+        <text x="55" y="176" class="svg-label small" text-anchor="middle">ego brakes</text>
+        <rect x="198" y="118" width="46" height="32" rx="3" fill="var(--obj)" opacity="0.14"/>
+        <rect x="198" y="118" width="46" height="32" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+        <text x="221" y="110" class="svg-label small" fill="var(--obj)" text-anchor="middle">predicted box</text>
+        <text x="221" y="176" class="svg-label small" text-anchor="middle">no real object</text>
+        <text x="163" y="210" class="svg-label small" fill="var(--obj)" text-anchor="middle">FP in path → phantom brake (usability)</text>
+        <rect x="342" y="8" width="310" height="216" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="497" y="32" class="svg-label strong" text-anchor="middle">Collision — false negative</text>
+        <rect x="356" y="112" width="288" height="44" rx="10" fill="var(--ego)" opacity="0.14"/>
+        <text x="604" y="103" class="svg-label small" text-anchor="middle">ego path →</text>
+        <rect x="366" y="120" width="42" height="28" rx="4" fill="var(--ego)"/>
+        <text x="387" y="176" class="svg-label small" text-anchor="middle">ego (no brake)</text>
+        <line x1="410" y1="134" x2="512" y2="134" stroke="var(--danger)" stroke-width="2" stroke-dasharray="6 4"/>
+        <path d="M 505 129 L 513 134 L 505 139" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <rect x="520" y="118" width="34" height="32" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+        <text x="537" y="110" class="svg-label small" text-anchor="middle">real object (GT)</text>
+        <text x="537" y="176" class="svg-label small" fill="var(--danger)" text-anchor="middle">model saw nothing</text>
+        <g stroke="var(--danger)" stroke-width="2">
+          <line x1="520" y1="134" x2="506" y2="122"/>
+          <line x1="520" y1="134" x2="502" y2="134"/>
+          <line x1="520" y1="134" x2="506" y2="146"/>
+          <line x1="520" y1="134" x2="512" y2="118"/>
+          <line x1="520" y1="134" x2="512" y2="150"/>
+        </g>
+        <text x="497" y="210" class="svg-label small" fill="var(--danger)" text-anchor="middle">FN in path → collision (safety)</text>
+      </svg>
+      </div>
+      <figcaption>The two failures a single mAP number blurs together: a false positive in the path is a
+      phantom brake (usability), a false negative in the path is a collision (safety) — opposite costs, never
+      averaged.</figcaption>
+    </figure>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 250" width="560" height="250" role="img" aria-labelledby="fig-b1-title">
+        <title id="fig-b1-title">Two curves over the confidence threshold: critical false positives fall as the threshold rises while false negatives rise; both are read at the release operating point.</title>
+        <line x1="70" y1="30" x2="70" y2="200" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="70" y1="200" x2="500" y2="200" stroke="var(--line)" stroke-width="1.5"/>
+        <polyline fill="none" stroke="var(--obj)" stroke-width="2.5"
+          points="70,50 140,78 210,108 280,132 350,152 420,166 500,176"/>
+        <polyline fill="none" stroke="var(--ego)" stroke-width="2.5"
+          points="70,182 140,176 210,164 280,146 350,120 420,88 500,56"/>
+        <line x1="340" y1="36" x2="340" y2="200" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <circle cx="340" cy="149" r="5" fill="var(--obj)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="340" cy="124" r="5" fill="var(--ego)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="348" y="26" class="svg-label small">release operating point</text>
+        <text x="78" y="48" class="svg-label" fill="var(--obj)">FP in corridor — phantom brake</text>
+        <text x="78" y="62" class="svg-label small" fill="var(--obj)">(usability)</text>
+        <text x="492" y="48" class="svg-label" fill="var(--ego)" text-anchor="end">FN in corridor — missed object</text>
+        <text x="492" y="62" class="svg-label small" fill="var(--ego)" text-anchor="end">(safety)</text>
+        <text x="285" y="226" class="svg-label" text-anchor="middle">confidence threshold τ →</text>
+        <text x="26" y="115" class="svg-label" text-anchor="middle" transform="rotate(-90 26 115)">errors / frame</text>
+      </svg>
+      </div>
+      <figcaption>The two error types move in opposite directions as the confidence threshold changes —
+      that is why they are never merged into one score.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">plotted at confidence 0.5 (0.3 in appendix)</span>
+      <span class="chip">match 2 m</span>
+      <span class="chip">critical = reachability TTC ≤ 4 s (no corridor filter)</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Critical FN / frame — missed object, per class <span class="unit">count / frame at conf 0.5, lower ↓</span></h4>
+      <div data-chart="det-b1-fn"></div>
+    </div>
+    <div class="chart-card">
+      <h4>Critical FP / frame — phantom brake, per class <span class="unit">count / frame at conf 0.5, lower ↓</span></h4>
+      <div data-chart="det-b1-fp"></div>
+    </div>
+    <p style="font-size:0.9rem; color:var(--ink2);">
+      Per class, following the taxonomy tab — a missed pedestrian weighs on its own, apart from a missed cone.
+      Matching is class-agnostic, so an object detected as the <em>wrong</em> class still counts as detected
+      (no critical FN here); that mislabelling is what the <a href="#det-confusion">confusion matrix</a> below shows.
+    </p>
+  </article>
+
+  <!-- ------- 4.8 slot ------- -->
+  <article class="metric" id="det-b2">
+    <div class="metric-head">
+      <h3>Collision-risk-weighted mAP</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      mAP where every object's contribution is weighted by how soon it could collide with ego — an object
+      1&nbsp;s away weighs e<sup>−0.5</sup> ≈ 0.61, one 3&nbsp;s away ≈ 0.22, and anything unreachable
+      within the 4&nbsp;s horizon weighs 0 — so a model can no longer buy score with easy, irrelevant
+      objects (a same-speed lead can never be caught: TTC = ∞). Always read next to the unweighted mAP above.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 700 300" width="700" height="300" role="img" aria-labelledby="fig-reach-title">
+      <title id="fig-reach-title">Bird's-eye worst-case reachability: ego expands to everything reachable at maximum speed under its tightest feasible left/right turn — constant-curvature arcs that keep their curvature right up to the road edge, where the drivable area hard-clips them with a sharp corner. A crossing pedestrian expands an isotropic disc; a stationary barrier stays put. TTC is the first time a set meets ego's region.</title>
+      <defs><clipPath id="road-clip"><rect x="0" y="92" width="700" height="150"/></clipPath></defs>
+      <rect x="0" y="46" width="700" height="46" fill="var(--chip-bg)" opacity="0.55"/>
+      <text x="34" y="40" class="svg-label small">sidewalk</text>
+      <rect x="0" y="92" width="700" height="150" fill="var(--chip-bg)" rx="4"/>
+      <text x="612" y="234" class="svg-label small" text-anchor="end">road (drivable)</text>
+      <!-- reachable region + its arcs are drawn extending off-road, then hard-clipped to the road -->
+      <g clip-path="url(#road-clip)">
+        <path d="M 90 167 C 150 167 200 108 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290 C 200 226 150 167 90 167 Z" fill="var(--ego)" opacity="0.16"/>
+        <path d="M 90 167 C 150 167 200 108 210 44" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 90 167 C 150 167 200 226 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>
+        <path d="M 90 167 L 372 167" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3" stroke-dasharray="4 4"/>
+        <path d="M 90 167 Q 235 150 322 112" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3"/>
+        <path d="M 90 167 Q 235 184 322 222" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3"/>
+      </g>
+      <!-- time ticks along the straight centerline -->
+      <circle cx="160" cy="167" r="2.5" fill="var(--ego)"/><text x="160" y="182" class="svg-label small" text-anchor="middle">1</text>
+      <circle cx="231" cy="167" r="2.5" fill="var(--ego)"/><text x="231" y="182" class="svg-label small" text-anchor="middle">2</text>
+      <circle cx="301" cy="167" r="2.5" fill="var(--ego)"/><text x="301" y="182" class="svg-label small" text-anchor="middle">3 s</text>
+      <rect x="44" y="154" width="46" height="26" rx="4" fill="var(--ego)"/>
+      <text x="67" y="148" class="svg-label strong" text-anchor="middle">ego</text>
+      <text x="150" y="284" class="svg-label small">worst case: max speed + tightest turn, hard-clipped at the road edge</text>
+      <!-- crossing pedestrian + isotropic disc -->
+      <circle cx="235" cy="62" r="48" fill="var(--obj)" opacity="0.08"/>
+      <circle cx="235" cy="62" r="48" fill="none" stroke="var(--obj)" stroke-width="1.5" stroke-dasharray="5 5" opacity="0.6"/>
+      <circle cx="235" cy="62" r="7" fill="var(--obj)"/>
+      <text x="150" y="30" class="svg-label small">pedestrian · disc</text>
+      <circle cx="235" cy="99" r="9" fill="none" stroke="var(--danger)" stroke-width="2.5"/>
+      <circle cx="235" cy="99" r="2.5" fill="var(--danger)"/>
+      <text x="486" y="118" class="svg-label strong" text-anchor="middle">set ∩ ego region → finite TTC</text>
+      <!-- stationary barrier inside the region -->
+      <rect x="330" y="160" width="13" height="22" rx="2" fill="var(--muted)"/>
+      <text x="336" y="155" class="svg-label small" text-anchor="middle">barrier</text>
+      <circle cx="336" cy="170" r="9" fill="none" stroke="var(--danger)" stroke-width="2.5"/>
+      <circle cx="336" cy="170" r="2.5" fill="var(--danger)"/>
+    </svg>
+      </div>
+      <figcaption>The one reachability model: worst case = lane speed limit + tightest feasible turn,
+      hard-clipped to the drivable area. TTC is the first time an object's own reachable set meets ego's.</figcaption>
+    </figure>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 700 210" width="700" height="210" role="img" aria-labelledby="fig-lead-title">
+      <title id="fig-lead-title">A lead vehicle at the same speed: ego and the lead both advance to the right by the same amount over two seconds, so the gap between them never closes and the reachable sets never overlap — time-to-collision is infinite.</title>
+      <rect x="0" y="66" width="700" height="96" fill="var(--chip-bg)" rx="4"/>
+      <line x1="0" y1="114" x2="700" y2="114" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.4"/>
+      <!-- t=now: ego + lead -->
+      <rect x="52" y="120" width="46" height="24" rx="4" fill="var(--ego)"/>
+      <text x="75" y="160" class="svg-label small" text-anchor="middle">ego (t)</text>
+      <rect x="300" y="121" width="42" height="22" rx="4" fill="var(--obj)"/>
+      <text x="321" y="160" class="svg-label small" text-anchor="middle">lead (t)</text>
+      <!-- t+2: ghosts, shifted right by the same amount -->
+      <rect x="252" y="120" width="46" height="24" rx="4" fill="var(--ego)" opacity="0.28"/>
+      <text x="275" y="94" class="svg-label small" text-anchor="middle" opacity="0.75">ego (t+2)</text>
+      <rect x="500" y="121" width="42" height="22" rx="4" fill="var(--obj)" opacity="0.28"/>
+      <text x="521" y="94" class="svg-label small" text-anchor="middle" opacity="0.75">lead (t+2)</text>
+      <!-- equal shift arrows -->
+      <path d="M 104 132 L 246 132" stroke="var(--ego)" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <path d="M 238 127 L 248 132 L 238 137" fill="none" stroke="var(--ego)" stroke-width="1.6"/>
+      <path d="M 348 132 L 494 132" stroke="var(--obj)" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <path d="M 486 127 L 496 132 L 486 137" fill="none" stroke="var(--obj)" stroke-width="1.6"/>
+      <!-- equal gaps -->
+      <text x="199" y="184" class="svg-label small" text-anchor="middle">gap</text>
+      <text x="399" y="184" class="svg-label small" text-anchor="middle">gap (unchanged)</text>
+      <line x1="98" y1="176" x2="300" y2="176" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+      <line x1="298" y1="176" x2="500" y2="176" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+      <text x="350" y="40" class="svg-label strong" text-anchor="middle">same speed → gap never closes → TTC = ∞ (weight ≈ 0)</text>
+    </svg>
+      </div>
+      <figcaption>A lead vehicle at the same speed advances exactly as fast as ego — the sets never meet,
+      TTC = ∞, weight 0.</figcaption>
+    </figure>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 250" width="560" height="250" role="img" aria-labelledby="fig5-title">
+        <title id="fig5-title">Exponential decay of the collision-risk weight over time-to-collision across the four-second horizon, with labeled points at 1, 2 and 4 seconds.</title>
+        <line x1="70" y1="20" x2="70" y2="200" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="70" y1="200" x2="530" y2="200" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="70" y1="30.8" x2="530" y2="30.8" stroke="var(--line)" stroke-width="1" opacity="0.5"/>
+        <line x1="70" y1="115.4" x2="530" y2="115.4" stroke="var(--line)" stroke-width="1" opacity="0.5"/>
+        <text x="62" y="35" class="svg-label small" text-anchor="end">1.0</text>
+        <text x="62" y="120" class="svg-label small" text-anchor="end">0.5</text>
+        <text x="62" y="205" class="svg-label small" text-anchor="end">0.0</text>
+        <text x="70" y="220" class="svg-label small" text-anchor="middle">0</text>
+        <text x="185" y="220" class="svg-label small" text-anchor="middle">1</text>
+        <text x="300" y="220" class="svg-label small" text-anchor="middle">2</text>
+        <text x="415" y="220" class="svg-label small" text-anchor="middle">3</text>
+        <text x="530" y="220" class="svg-label small" text-anchor="middle">4</text>
+        <text x="300" y="242" class="svg-label" text-anchor="middle">TTC (seconds) — horizon T = 4 s</text>
+        <text x="24" y="110" class="svg-label" text-anchor="middle" transform="rotate(-90 24 110)">weight w</text>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2.5"
+          points="70,30.8 127.5,68.2 185,97.3 242.5,120.1 300,137.7 357.5,151.4 415,162.3 472.5,170.6 530,177.2"/>
+        <circle cx="185" cy="97.3" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="300" cy="137.7" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="530" cy="177.2" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="196" y="92" class="svg-label strong">0.61</text>
+        <text x="310" y="133" class="svg-label strong">0.37</text>
+        <text x="512" y="172" class="svg-label strong" text-anchor="end">0.14</text>
+      </svg>
+      </div>
+      <figcaption>w(o) = e<sup>−λ·TTC(o)</sup>, λ = 0.5 over the T = 4 s horizon; an object that cannot
+      collide within the horizon gets TTC = ∞ → weight 0.</figcaption>
+    </figure>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 232" width="660" height="232" role="img" aria-labelledby="fig-b2-scene-title">
+        <title id="fig-b2-scene-title">Bird's-eye view: ego on a two-lane road. An oncoming vehicle closes fast (low time-to-collision, high weight); a lead vehicle at the same speed can never be caught (infinite time-to-collision, weight zero).</title>
+        <text x="330" y="24" class="svg-label strong" text-anchor="middle" fill="var(--accent-text)">weight follows reachability TTC — not distance</text>
+        <!-- road, two lanes -->
+        <rect x="16" y="70" width="628" height="104" rx="6" fill="var(--chip-bg)"/>
+        <line x1="16" y1="122" x2="644" y2="122" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.5"/>
+        <!-- ego, lower lane, heading right -->
+        <rect x="30" y="136" width="46" height="26" rx="4" fill="var(--ego)"/>
+        <text x="53" y="184" class="svg-label small" text-anchor="middle">ego →</text>
+        <!-- oncoming vehicle, upper lane, heading left toward ego -->
+        <rect x="360" y="84" width="44" height="24" rx="4" fill="var(--obj)"/>
+        <path d="M 356 96 L 300 96" stroke="var(--danger)" stroke-width="2"/>
+        <path d="M 308 90 L 298 96 L 308 102" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        <text x="382" y="66" class="svg-label small" text-anchor="middle">oncoming</text>
+        <rect x="430" y="82" width="16" height="30" rx="3" fill="var(--code-bg)"/>
+        <rect x="430" y="82" width="16" height="18.3" rx="3" fill="var(--accent)"/>
+        <text x="438" y="126" class="svg-label small" text-anchor="middle">TTC≈1 s · w 0.61</text>
+        <!-- lead vehicle, same lane as ego, same speed, heading right (away) -->
+        <rect x="470" y="136" width="44" height="26" rx="4" fill="var(--obj)"/>
+        <path d="M 518 149 L 566 149" stroke="var(--muted)" stroke-width="2"/>
+        <path d="M 558 143 L 568 149 L 558 155" fill="none" stroke="var(--muted)" stroke-width="2"/>
+        <text x="492" y="184" class="svg-label small" text-anchor="middle">lead, same speed</text>
+        <rect x="590" y="136" width="16" height="30" rx="3" fill="var(--code-bg)"/>
+        <text x="598" y="182" class="svg-label small" text-anchor="middle">TTC ∞ · w 0</text>
+      </svg>
+      </div>
+      <figcaption>The weight in a scene: an oncoming vehicle closes fast → low TTC, high weight; a lead
+      vehicle at the same speed can never be caught → TTC = ∞, weight 0.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">TTC: reachability — lane speed limit, bounded steering, clipped to road</span>
+      <span class="chip">λ = 0.5 · T = 4 s</span>
+      <span class="chip">higher is better ↑</span>
+    </div>
+    <div class="chart-card">
+      <h4>Collision-weighted mAP <span class="unit">0–1, higher ↑</span></h4>
+      <div data-chart="det-b2" data-slot-note="Not measured in this run — CollisionWeightedMeanAP is not enabled in the evaluation config; the panel stays so runs that do enable it land in the same place."></div>
+    </div>
+  </article>
+
+  <!-- ------- 4.9 calibration (det) ------- -->
+  <article class="metric" id="det-e1">
+    <div class="metric-head">
+      <h3>Calibration error (ECE)</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      A 0.9-score box should be a true positive about 90% of the time. When it is not, downstream logic
+      trusts a score it should not. ECE measures that gap between the detection score and the empirical
+      precision — the detection twin of the segmentation calibration metric.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 480 300" width="480" height="300" role="img" aria-labelledby="fig-det-e1-title">
+        <title id="fig-det-e1-title">Reliability diagram: the diagonal is perfect calibration; bars below it show an overconfident model, and the gap between bar and diagonal is the calibration error.</title>
+        <line x1="60" y1="20" x2="60" y2="250" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="250" x2="440" y2="250" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="250" x2="440" y2="20" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <text x="430" y="38" class="svg-label small" text-anchor="end">perfect calibration</text>
+        <!-- accuracy bars below the diagonal (overconfident): x=confidence bin, height=accuracy -->
+        <rect x="130" y="210" width="34" height="40" fill="var(--accent)" opacity="0.7"/>
+        <rect x="206" y="176" width="34" height="74" fill="var(--accent)" opacity="0.7"/>
+        <rect x="282" y="150" width="34" height="100" fill="var(--accent)" opacity="0.7"/>
+        <rect x="358" y="120" width="34" height="130" fill="var(--accent)" opacity="0.7"/>
+        <!-- gap markers -->
+        <line x1="147" y1="210" x2="147" y2="197" stroke="var(--danger)" stroke-width="2"/>
+        <line x1="299" y1="150" x2="299" y2="105" stroke="var(--danger)" stroke-width="2"/>
+        <text x="250" y="278" class="svg-label" text-anchor="middle">confidence (max softmax) →</text>
+        <text x="26" y="140" class="svg-label" text-anchor="middle" transform="rotate(-90 26 140)">accuracy</text>
+        <text x="315" y="74" class="svg-label strong" fill="var(--danger)" text-anchor="middle">gap = |acc − conf|</text>
+      </svg>
+      </div>
+      <figcaption>Reliability diagram: the diagonal is perfect calibration; here "correct" means the
+      prediction is a true positive at the 2 m gate, so a bin's accuracy is its precision.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">15 score bins</span>
+      <span class="chip">correctness = box is a true positive (bin accuracy = precision)</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Detection calibration error <span class="unit">lower ↓</span></h4>
+      <div data-chart="det-e1"></div>
+    </div>
+  </article>
+
+  <!-- ------- 4.10 confident FP ------- -->
+  <article class="metric" id="det-e3">
+    <div class="metric-head">
+      <h3>Confident-error rate</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Of the boxes the model got wrong, what fraction was it <em>sure</em> about? A false positive the model
+      is unsure of is recoverable; a high-score false positive is the confident phantom that triggers a hard
+      brake. This is the detection twin of the segmentation confident-error rate — an error here is a
+      false-positive box, and confidence is the detection score.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 420 280" width="420" height="280" role="img" aria-labelledby="fig-det-e3-title">
+        <title id="fig-det-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one — a high-score false positive.</title>
+        <line x1="60" y1="30" x2="60" y2="230" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="230" x2="380" y2="230" stroke="var(--line)" stroke-width="1.5"/>
+        <rect x="60" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="220" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="60" y="30" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="220" y="30" width="160" height="100" fill="var(--danger)" opacity="0.22"/>
+        <text x="140" y="185" class="svg-label small" text-anchor="middle">low-score &amp; correct</text>
+        <text x="300" y="185" class="svg-label small" text-anchor="middle">confident &amp; correct</text>
+        <text x="140" y="85" class="svg-label small" text-anchor="middle">low-score FP</text>
+        <text x="300" y="80" class="svg-label strong" text-anchor="middle" fill="var(--danger)">confident</text>
+        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">confident FP</text>
+        <text x="220" y="256" class="svg-label" text-anchor="middle">detection score →</text>
+        <text x="26" y="130" class="svg-label" text-anchor="middle" transform="rotate(-90 26 130)">false positive ← → true positive</text>
+      </svg>
+      </div>
+      <figcaption>Of the false positives, the confident-error rate is the fraction with a high detection score — the confident
+      phantom boxes. Missed objects (false negatives) carry no score, so the safety axis is the critical-FN curve.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">confident = score ≥ 0.5</span>
+      <span class="chip">error = false positive (no matching GT)</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Confident false-positive rate <span class="unit">fraction of FPs, lower ↓</span></h4>
+      <div data-chart="det-e3"></div>
+    </div>
+  </article>
+
+  <!-- ------- confusion matrix ------- -->
+  <article class="metric" id="det-confusion">
+    <div class="metric-head">
+      <h3>Class confusion matrix</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p>
+      Among detections that match a ground-truth box (class-agnostic, within 2&nbsp;m), which class does the
+      model assign? Rows are the true class, columns the prediction — the diagonal is correct and each
+      off-diagonal cell is a specific swap. Cells are row-normalized (of all matched true-class objects, the
+      fraction called each class); hover for the raw count. Follows the range and taxonomy tabs, so the
+      grouped taxonomy collapses intra-group swaps onto the diagonal. Misses and false positives are not
+      here — they are the critical-FP/FN metric.
+    </p>
+    <div class="seg-control cm-slice" id="det-confusion-slice" role="group" aria-label="Confusion slice"></div>
+    <div class="chart-card"><div data-confusion="det3d"></div></div>
+  </article>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="seg3d" data-task="seg3d">
+  <div class="sec-label">Section 6</div>
+  <h2>Segmentation metrics <span class="chip seg3d">seg3d</span></h2>
+  <p>
+    Per-point classification over the 15 trained classes. Quality metrics come from the confusion matrix;
+    the driving-aware metrics (error clusters, calibration, uncertainty) read the full per-point test cache.
+    The <b>taxonomy tab</b> at the top folds these into 8 behaviour groups — e.g. drivable_surface and
+    non_drivable_flat into one <code>grouped_flat</code> — so intra-group confusion stops
+    counting against the model; switch it to read the grouped scores.
+  </p>
+  <div class="chip-row">
+    <span class="lead">Shared config</span>
+    <span class="chip">15 trained classes (joined names, e.g. other_flat_surface-sidewalk)</span>
+    <span class="chip">8 behaviour groups when the taxonomy tab is on "Behaviour groups"</span>
+    <span class="chip">ignore_index −1 excluded everywhere</span>
+  </div>
+
+  <!-- ------- 5.1 IoU family ------- -->
+  <article class="metric" id="seg-iou">
+    <div class="metric-head">
+      <h3>IoU, accuracy and the per-class view</h3>
+      <span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      IoU per class is the overlap between all points predicted as a class and all points that truly are
+      that class — it punishes both painting too much and missing points. mIoU averages the classes with
+      support. <b>Overall accuracy</b> (aAcc) is the plain fraction of correctly labeled points, dominated by
+      the big surfaces; <b>mean accuracy</b> (mAcc) averages each class's own accuracy equally, so a rare
+      class counts as much as the road. fwIoU weights classes by how many points they own, so it tracks the
+      big surfaces.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 560 190" width="560" height="190" role="img" aria-labelledby="fig-iou-title">
+        <title id="fig-iou-title">Two overlapping point sets: points predicted as a class and points truly of that class; IoU is the intersection over the union.</title>
+        <ellipse cx="230" cy="95" rx="150" ry="70" fill="var(--ego)" opacity="0.13"/>
+        <ellipse cx="330" cy="95" rx="150" ry="70" fill="var(--accent)" opacity="0.13"/>
+        <ellipse cx="230" cy="95" rx="150" ry="70" fill="none" stroke="var(--ego)" stroke-width="1.5"/>
+        <ellipse cx="330" cy="95" rx="150" ry="70" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="150" y="52" class="svg-label" fill="var(--ego)">predicted "road"</text>
+        <text x="412" y="52" class="svg-label" fill="var(--accent-text)" text-anchor="end">truly road</text>
+        <text x="280" y="100" class="svg-label strong" text-anchor="middle">∩</text>
+        <text x="280" y="176" class="svg-label small" text-anchor="middle">IoU = points in both / points in either — false paint and misses both shrink it</text>
+      </svg>
+      </div>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">road slice margin 0.2 m, cut inward</span>
+      <span class="chip">critical = reachability TTC ≤ 4 s (no corridor filter)</span>
+      <span class="chip">higher is better ↑</span>
+    </div>
+    <div class="chart-card">
+      <h4>Per-class IoU — whole scene <span class="unit">IoU, 0–1, higher ↑</span></h4>
+      <div data-chart="seg-iou-class"></div>
+    </div>
+    <div class="chart-card">
+      <h4>Per-class accuracy — whole scene <span class="unit">accuracy, 0–1, higher ↑</span></h4>
+      <div data-chart="seg-acc-class"></div>
+    </div>
+    <p><b>The release trio</b> — overall mIoU plus the two surfaces we track by name: vegetation (overhang
+    mislabels near the road) and the drivable surface the planner treats as ground (the whole
+    <code>grouped_flat</code> group under the behaviour-groups taxonomy):</p>
+    <div class="chart-grid">
+      <div class="chart-card"><h4>Whole scene <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-whole"></div></div>
+      <div class="chart-card"><h4>Road slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-road"></div></div>
+      <div class="chart-card"><h4>Corridor slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-corridor"></div></div>
+    </div>
+  </article>
+
+  <!-- ------- 5.2 error clusters ------- -->
+  <article class="metric" id="seg-d1">
+    <div class="metric-head">
+      <h3>Error clusters — phantom obstacles</h3>
+      <span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      An error is simply a point whose prediction disagrees with the ground truth; what makes it dangerous
+      is <em>where</em> it happens, and that comes from the slice, never from class sets. On the road slice
+      these are the phantoms that brake the car and the mislabeled obstacles that hide one. Nearby error
+      points merge into one cluster, and each cluster counts once regardless of size — a lone stray point
+      and a ten-point blob both cause a single emergency stop.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 210" width="660" height="210" role="img" aria-labelledby="fig-d2-title">
+        <title id="fig-d2-title">Wrongly-classified points on the drivable surface: every connected group is ringed as one cluster — a lone point and a dense blob each count as a single phantom obstacle, regardless of size.</title>
+        <rect x="10" y="50" width="640" height="120" rx="6" fill="var(--accent)" opacity="0.12"/>
+        <text x="24" y="72" class="svg-label small">drivable surface</text>
+        <rect x="36" y="96" width="44" height="24" rx="4" fill="var(--ego)"/>
+        <text x="58" y="140" class="svg-label small" text-anchor="middle">ego</text>
+        <circle cx="230" cy="100" r="13" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <circle cx="230" cy="100" r="4" fill="var(--obj)"/>
+        <circle cx="330" cy="128" r="13" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <circle cx="330" cy="128" r="4" fill="var(--obj)"/>
+        <circle cx="420" cy="94" r="13" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <circle cx="420" cy="94" r="4" fill="var(--obj)"/>
+        <text x="325" y="196" class="svg-label small" text-anchor="middle">single-point clusters — 1 phantom each</text>
+        <circle cx="548" cy="106" r="4" fill="var(--obj)"/>
+        <circle cx="560" cy="96" r="4" fill="var(--obj)"/>
+        <circle cx="572" cy="110" r="4" fill="var(--obj)"/>
+        <circle cx="556" cy="118" r="4" fill="var(--obj)"/>
+        <circle cx="568" cy="122" r="4" fill="var(--obj)"/>
+        <circle cx="578" cy="98" r="4" fill="var(--obj)"/>
+        <circle cx="547" cy="94" r="4" fill="var(--obj)"/>
+        <circle cx="562" cy="108" r="26" fill="none" stroke="var(--danger)" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="562" y="42" class="svg-label strong" text-anchor="middle">dense cluster — still 1 phantom</text>
+      </svg>
+      </div>
+      <figcaption>Every connected group is one cluster: a lone point and a dense blob each count as a single
+      phantom, so the cluster count weights obstacles by <em>existence</em>, not by point count (that is what
+      the error rate does). Here there are <b>four</b> clusters — three single-point ones and the blob.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">error = any pred ≠ target point</span>
+      <span class="chip">cluster radius 0.5 m</span>
+      <span class="chip">min cluster size 1 point</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card"><h4>Point error rate <span class="unit">fraction, lower ↓</span></h4><div data-chart="seg-d1-rate"></div></div>
+      <div class="chart-card"><h4>Error clusters per frame <span class="unit">count / frame, lower ↓</span></h4><div data-chart="seg-d1-clusters"></div></div>
+    </div>
+  </article>
+
+  <!-- ------- 5.3 neighbourhood-tolerant error ------- -->
+  <article class="metric" id="seg-d3">
+    <div class="metric-head">
+      <h3>Neighbourhood-tolerant error rate</h3>
+      <span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      Point labels are not pixel-perfect, and a few flipped points do not matter for driving as long as the
+      right class is present right there. A misclassified point counts as an error only if the model
+      predicted its true class on <em>no</em> point within a small radius — a genuinely wrong region, not
+      annotation jitter at a boundary. Always ≤ the strict error rate; it equals it at radius 0.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 210" width="660" height="210" role="img" aria-labelledby="fig-d4-title">
+        <title id="fig-d4-title">Two misclassified points: one sits beside a point where the model predicted its true class and is forgiven; the other has no correct-class neighbour within the radius and counts as an error.</title>
+        <!-- tolerated case -->
+        <rect x="16" y="20" width="300" height="170" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="30" y="42" class="svg-label strong">forgiven</text>
+        <circle cx="120" cy="110" r="34" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="120" y="158" class="svg-label small" text-anchor="middle">radius r</text>
+        <circle cx="120" cy="110" r="6" fill="var(--danger)"/>
+        <text x="120" y="98" class="svg-label small" text-anchor="middle" fill="var(--danger)">pred A · GT B</text>
+        <circle cx="150" cy="122" r="6" fill="var(--accent)"/>
+        <circle cx="98" cy="128" r="6" fill="var(--accent)"/>
+        <text x="150" y="180" class="svg-label small" text-anchor="middle">neighbour predicted B → tolerated</text>
+        <!-- error case -->
+        <rect x="344" y="20" width="300" height="170" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="358" y="42" class="svg-label strong">counts as error</text>
+        <circle cx="470" cy="110" r="34" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <circle cx="470" cy="110" r="6" fill="var(--danger)"/>
+        <text x="470" y="98" class="svg-label small" text-anchor="middle" fill="var(--danger)">pred A · GT B</text>
+        <circle cx="508" cy="128" r="6" fill="var(--accent)"/>
+        <circle cx="434" cy="132" r="6" fill="var(--accent)"/>
+        <text x="490" y="184" class="svg-label small" text-anchor="middle">nearest B is beyond r → error</text>
+      </svg>
+      </div>
+      <figcaption>A wrong point beside one where the model predicted its true class is forgiven; a wrong
+      point with no such neighbour within r stays an error.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">tolerance radius 0.2 m</span>
+      <span class="chip">error = wrong point with no correct-class neighbour within r</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Tolerant error rate <span class="unit">fraction of points, lower ↓</span></h4>
+      <div data-chart="seg-d3"></div>
+    </div>
+  </article>
+
+  <!-- ------- 5.4 calibration ------- -->
+  <article class="metric" id="seg-e1">
+    <div class="metric-head">
+      <h3>Calibration error (ECE)</h3>
+      <span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      A model that says “90% road” should be right about 90% of the time. When it is not — when it is
+      confidently wrong — downstream logic trusts a mistake. Expected Calibration Error measures the gap
+      between confidence and correctness.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 480 300" width="480" height="300" role="img" aria-labelledby="fig-e1-title">
+        <title id="fig-e1-title">Reliability diagram: the diagonal is perfect calibration; bars below it show an overconfident model, and the gap between bar and diagonal is the calibration error.</title>
+        <line x1="60" y1="20" x2="60" y2="250" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="250" x2="440" y2="250" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="250" x2="440" y2="20" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <text x="430" y="38" class="svg-label small" text-anchor="end">perfect calibration</text>
+        <rect x="130" y="210" width="34" height="40" fill="var(--accent)" opacity="0.7"/>
+        <rect x="206" y="176" width="34" height="74" fill="var(--accent)" opacity="0.7"/>
+        <rect x="282" y="150" width="34" height="100" fill="var(--accent)" opacity="0.7"/>
+        <rect x="358" y="120" width="34" height="130" fill="var(--accent)" opacity="0.7"/>
+        <line x1="147" y1="210" x2="147" y2="197" stroke="var(--danger)" stroke-width="2"/>
+        <line x1="299" y1="150" x2="299" y2="105" stroke="var(--danger)" stroke-width="2"/>
+        <text x="250" y="278" class="svg-label" text-anchor="middle">confidence (max softmax) →</text>
+        <text x="26" y="140" class="svg-label" text-anchor="middle" transform="rotate(-90 26 140)">accuracy</text>
+        <text x="315" y="74" class="svg-label strong" fill="var(--danger)" text-anchor="middle">gap = |acc − conf|</text>
+      </svg>
+      </div>
+      <figcaption>Bars sitting below the diagonal are overconfidence; ECE is the point-weighted mean of the
+      red gaps across confidence bins.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">15 confidence bins</span>
+      <span class="chip">measured as shipped — before any recalibration</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Calibration error <span class="unit">lower ↓</span></h4>
+      <div data-chart="seg-e1"></div>
+    </div>
+  </article>
+
+  <!-- ------- 5.4 entropy AUROC ------- -->
+  <article class="metric" id="seg-e2">
+    <div class="metric-head">
+      <h3>Uncertainty usefulness (entropy AUROC)</h3>
+      <span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      Uncertainty is only worth anything if it flags the model's <em>own</em> mistakes — then downstream can
+      hesitate where the model is unsure. This checks whether per-point entropy actually separates correct
+      points from wrong ones: 0.5 means the uncertainty is meaningless noise, 1.0 means it is a perfect
+      error flag. Diagnostic — it characterizes the confidence signal, it does not rank accuracy.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 520 250" width="520" height="250" role="img" aria-labelledby="fig-e2-title">
+        <title id="fig-e2-title">Two entropy distributions: correct points cluster at low entropy and misclassified points at high entropy; the more they separate, the higher the AUROC of entropy as an error detector.</title>
+        <line x1="60" y1="190" x2="490" y2="190" stroke="var(--line)" stroke-width="1.5"/>
+        <polygon points="60,190 60,150 81,95 102,62 123,72 144,105 186,150 228,175 270,184 312,187 396,190 480,190"
+                 fill="var(--accent)" opacity="0.16"/>
+        <polyline points="60,150 81,95 102,62 123,72 144,105 186,150 228,175 270,184 312,187 396,190 480,190"
+                  fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <polygon points="144,190 144,185 186,172 228,148 270,120 312,102 354,98 396,112 438,142 480,168 480,190"
+                 fill="var(--obj)" opacity="0.16"/>
+        <polyline points="144,185 186,172 228,148 270,120 312,102 354,98 396,112 438,142 480,168"
+                  fill="none" stroke="var(--obj)" stroke-width="2"/>
+        <text x="105" y="50" class="svg-label strong" fill="var(--accent-text)" text-anchor="middle">correct</text>
+        <text x="362" y="86" class="svg-label strong" fill="var(--obj)" text-anchor="middle">misclassified</text>
+        <text x="250" y="150" class="svg-label small" text-anchor="middle">overlap = confusable</text>
+        <text x="275" y="216" class="svg-label" text-anchor="middle">normalized entropy H →</text>
+        <text x="60" y="234" class="svg-label small" text-anchor="middle">0</text>
+        <text x="480" y="234" class="svg-label small" text-anchor="middle">1</text>
+        <text x="26" y="120" class="svg-label" text-anchor="middle" transform="rotate(-90 26 120)">point density</text>
+      </svg>
+      </div>
+      <figcaption>The further the misclassified distribution sits to the right of the correct one, the more
+      entropy works as an error flag — AUROC measures exactly that separation.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">normalized softmax entropy, H ∈ [0, 1]</span>
+      <span class="chip">higher is better ↑ (0.5 = useless)</span>
+    </div>
+    <div class="chart-card">
+      <h4>Entropy AUROC <span class="unit">0.5–1, higher ↑</span></h4>
+      <div data-chart="seg-e2"></div>
+    </div>
+  </article>
+
+  <!-- ------- 5.5 confident errors ------- -->
+  <article class="metric" id="seg-e3">
+    <div class="metric-head">
+      <h3>Confident-error rate</h3>
+      <span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      Of the errors in a slice, what fraction were made at <em>high confidence</em>? A phantom the model is
+      unsure about is recoverable; a confident phantom triggers a hard brake. The confident-error rate splits the error-cluster points into
+      hesitant versus confident — the confident ones are the release blockers.
+    </p>
+    <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 420 280" width="420" height="280" role="img" aria-labelledby="fig-e3-title">
+        <title id="fig-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one the confident-error rate measures.</title>
+        <line x1="60" y1="30" x2="60" y2="230" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="60" y1="230" x2="380" y2="230" stroke="var(--line)" stroke-width="1.5"/>
+        <rect x="60" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="220" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="60" y="30" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
+        <rect x="220" y="30" width="160" height="100" fill="var(--danger)" opacity="0.22"/>
+        <text x="140" y="185" class="svg-label small" text-anchor="middle">uncertain &amp; correct</text>
+        <text x="300" y="185" class="svg-label small" text-anchor="middle">confident &amp; correct</text>
+        <text x="140" y="85" class="svg-label small" text-anchor="middle">uncertain &amp; wrong</text>
+        <text x="300" y="80" class="svg-label strong" text-anchor="middle" fill="var(--danger)">confident</text>
+        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">&amp; wrong → conf. error</text>
+        <text x="220" y="256" class="svg-label" text-anchor="middle">confidence →</text>
+        <text x="26" y="130" class="svg-label" text-anchor="middle" transform="rotate(-90 26 130)">wrong ← → correct</text>
+      </svg>
+      </div>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">confident = normalized entropy &lt; 0.3</span>
+      <span class="chip">error = any pred ≠ target point</span>
+      <span class="chip">lower is better ↓</span>
+    </div>
+    <div class="chart-card">
+      <h4>Confident-error rate <span class="unit">fraction of errors, lower ↓</span></h4>
+      <div data-chart="seg-e3"></div>
+    </div>
+  </article>
+
+  <!-- ------- confusion matrix ------- -->
+  <article class="metric" id="seg-confusion">
+    <div class="metric-head">
+      <h3>Class confusion matrix</h3>
+      <span class="chip seg3d">seg3d</span>
+    </div>
+    <p>
+      Point-level: of all points truly of each class (rows), what fraction did the model predict as each
+      class (columns)? The diagonal is per-class accuracy (recall); the off-diagonal cells are the
+      confusions. Row-normalized — hover for the raw point count. Follows the range and taxonomy tabs.
+    </p>
+    <div class="seg-control cm-slice" id="seg-confusion-slice" role="group" aria-label="Confusion slice"></div>
+    <div class="chart-card"><div data-confusion="seg3d"></div></div>
+  </article>
+
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="appendix">
+  <div class="sec-label">Section 7</div>
+  <h2>Full results — every metric from the test run</h2>
+  <p>
+    The complete key → value dump from each model's test evaluation, one column per release. The best value
+    per row is <b>bold</b> according to the metric's direction (↑ higher / ↓ lower / · not ranked — counts
+    and sanity keys); “–” is a metric without support there. Keys read as
+    <code>[slice/]metric[_range]</code>. <code>gt_count_*</code> rows must match across models on the same
+    split.
+  </p>
+  <div data-task="det3d">
+    <h3>Detection <span class="chip det3d">det3d</span></h3>
+    <div class="appendix-tools">
+      <input type="search" id="det-search" placeholder="Filter keys… e.g. mAP_pedestrian or corridor/" aria-label="Filter detection metrics">
+      <span class="count" id="det-count"></span>
+    </div>
+    <div class="table-wrap appendix-wrap">
+      <table class="appendix-table" id="det-appendix"></table>
+    </div>
+  </div>
+  <div data-task="seg3d">
+    <h3>Segmentation <span class="chip seg3d">seg3d</span></h3>
+    <div class="appendix-tools">
+      <input type="search" id="seg-search" placeholder="Filter keys… e.g. iou_vegetation or region_walkway" aria-label="Filter segmentation metrics">
+      <span class="count" id="seg-count"></span>
+    </div>
+    <div class="table-wrap appendix-wrap">
+      <table class="appendix-table" id="seg-appendix"></table>
+    </div>
+  </div>
+
+  <h3>Metric spec <span class="chip" data-bind="metric-spec-bundle">—</span></h3>
+  <p>
+    The versioned definition each number above was computed against. Every metric carries a version by
+    <b>name</b>; a change to a parameter bumps the minor version and a change to the formula bumps the major,
+    so a value is only ever compared against the same <code>name@version</code>.
+  </p>
+  <div class="table-wrap appendix-wrap">
+    <table class="appendix-table" id="metric-spec-table"></table>
+  </div>
+</section>
+
+</main>
+
+<footer class="doc">
+  <p>
+    PTv3 multi-head model report · charts render from the embedded <code>report-data</code> block — no
+    external dependencies. Metric definitions and figures follow the
+    perception-metrics proposal; evaluation settings are printed as chips next to each
+    metric. Open in any browser; dark mode follows the system theme.
+  </p>
+</footer>
+
+<div id="tooltip" role="status" aria-live="polite"></div>
+
+<script id="report-data" type="application/json">
+{
+  "test_sets": [
+    {
+      "id": "det3d",
+      "label": "det3d",
+      "version": "0.1",
+      "tasks": [
+        "det3d"
+      ],
+      "dataset": null,
+      "metric_spec": null,
+      "models": []
+    },
+    {
+      "id": "seg3d",
+      "label": "seg3d",
+      "version": "0.1",
+      "tasks": [
+        "seg3d"
+      ],
+      "dataset": null,
+      "metric_spec": null,
+      "models": []
+    },
+    {
+      "id": "det3d-seg3d-j6gen2",
+      "label": "det3d-seg3d-j6gen2-v0.1",
+      "version": "0.1",
+      "tasks": [
+        "det3d",
+        "seg3d"
+      ],
+      "dataset": null,
+      "metric_spec": null,
+      "models": []
+    }
+  ]
+}
+</script>
+<script>
+"use strict";
+
+/* ---------------- data & constants ---------------- */
+const DATA = JSON.parse(document.getElementById("report-data").textContent);
+const TEST_SETS = Array.isArray(DATA.test_sets) ? DATA.test_sets : [];
+let currentTestSet = 0;
+let MODELS = [];         // the active test set's models (set by render())
+let METRIC_SPEC = null;  // the active test set's metric_spec (set by render())
+function activeSet() {
+  return TEST_SETS[currentTestSet] || { tasks: [], models: [], metric_spec: null, dataset: null };
+}
+function activeTasks() {
+  return new Set(activeSet().tasks || []);
+}
+const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)"];
+const RANGES = [
+  { id: "0m_121m", label: "Full area (0–121 m)" },
+  { id: "0m_50m", label: "0–50 m" },
+  { id: "50m_90m", label: "50–90 m" },
+  { id: "90m_121m", label: "90–121 m" },
+];
+const DET_ROAD = "region_road";
+const SEG_ROAD = "region_road";
+const COR = "corridor";
+// Per-class taxonomies (trained classes) and behaviour-group taxonomies (folded).
+// The taxonomy tab switches which the charts read: per-class keys live in the
+// det3d / seg3d metric buckets, grouped keys in det3d_grouped / seg3d_grouped.
+const DET_CLASSES = [
+  "car", "truck", "bus", "train", "motorcycle", "bicycle", "pedestrian",
+  "animal", "barrier", "traffic_cone", "debris", "bicycle_rack", "vehicle_extension",
+];
+const DET_GROUPED = [
+  "grouped_vehicle", "grouped_two_wheeler", "grouped_pedestrian_animal",
+  "grouped_static_obstacle", "grouped_debris", "grouped_structure",
+];
+const SEG_CLASSES = [
+  ["car", "car"],
+  ["truck", "truck"],
+  ["bus", "bus"],
+  ["train", "train"],
+  ["motorcycle", "motorcycle"],
+  ["bicycle", "bicycle"],
+  ["pedestrian", "pedestrian"],
+  ["animal", "animal"],
+  ["barrier", "barrier"],
+  ["traffic_cone", "traffic_cone"],
+  ["debris", "debris"],
+  ["bicycle_rack", "bicycle_rack"],
+  ["vehicle_extension", "vehicle_extension"],
+  ["drivable_flat", "drivable_flat"],
+  ["non_drivable_flat", "non_drivable_flat"],
+  ["vegetation", "vegetation"],
+  ["building", "building"],
+  ["vertical_thin", "vertical_thin"],
+  ["static_clutter", "static_clutter"],
+  ["noise", "noise"],
+];
+const SEG_GROUPED = [
+  ["grouped_vehicle", "vehicle"],
+  ["grouped_two_wheeler", "two-wheeler"],
+  ["grouped_pedestrian_animal", "pedestrian / animal"],
+  ["grouped_static_obstacle", "static obstacle"],
+  ["grouped_debris", "debris"],
+  ["grouped_static_clutter", "static clutter"],
+  ["grouped_flat", "flat surface"],
+  ["grouped_vegetation", "vegetation"],
+  ["grouped_structure", "structure"],
+  ["grouped_noise", "noise"],
+];
+const TAXONOMIES = [
+  { id: "per", label: "Per class" },
+  { id: "grouped", label: "Behaviour groups" },
+];
+let currentRange = RANGES[0].id;
+let currentTaxonomy = "per";
+
+/* ---------------- helpers ---------------- */
+// Active class lists / metric bucket for the selected taxonomy.
+function detClasses() {
+  return currentTaxonomy === "grouped" ? DET_GROUPED : DET_CLASSES;
+}
+function segClasses() {
+  return currentTaxonomy === "grouped" ? SEG_GROUPED : SEG_CLASSES;
+}
+function taxonomyBucket(task) {
+  return currentTaxonomy === "grouped" ? task + "_grouped" : task;
+}
+function metricValue(model, task, slice, key, rangeId) {
+  const full = (slice ? slice + "/" : "") + key + "_" + rangeId;
+  const bucket = model.metrics[taxonomyBucket(task)];
+  const v = bucket ? bucket[full] : undefined;
+  return v === undefined ? undefined : v;
+}
+function fmtValue(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "–";
+  if (Number.isInteger(v) && Math.abs(v) >= 1000) return v.toLocaleString("en-US");
+  if (Number.isInteger(v)) return String(v);
+  if (Math.abs(v) >= 100) return v.toFixed(1);
+  return v.toFixed(3);
+}
+function niceCeil(x) {
+  if (!(x > 0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(x)));
+  for (const m of [1, 1.5, 2, 2.5, 4, 5, 8, 10]) if (m * p >= x) return m * p;
+  return 10 * p;
+}
+const NEUTRAL_RE = /^(gt_count|num_match|tp_error_num_match|optimal_conf|nsurf_low|nsurf_mean|mnsurf_mean)/;
+const LOWER_RE = /^(mATE|mASE|mAOE|mAVE|mAAE|ATE_|ASE_|AOE_|AVE_|AAE_|corner_|mcorner|nsurf_|mnsurf|flip_|mflip|critical_|ece|error_rate|error_cluster|tolerant_error|confident_error|mean_entropy_correct)/;
+const HIGHER_RE = /^(mAP|AP_|mAPH|APH_|map_based_nds|mapH_based_nds|max_f1|cw_mAP|mIoU|fwIoU|iou_|acc_|mPrecision|mRecall|mF1|precision_|recall_|f1_|entropy_auroc|mean_entropy_wrong|optimal_recall|optimal_precision|pd_score|mpd_score)/;
+function direction(fullKey) {
+  const base = fullKey.includes("/") ? fullKey.slice(fullKey.indexOf("/") + 1) : fullKey;
+  if (NEUTRAL_RE.test(base)) return "neutral";
+  if (LOWER_RE.test(base)) return "lower";
+  if (HIGHER_RE.test(base)) return "higher";
+  return "neutral";
+}
+
+/* ---------------- tooltip ---------------- */
+const tooltip = document.getElementById("tooltip");
+function showTooltip(evt, valueText, labelText) {
+  tooltip.textContent = "";
+  const v = document.createElement("div");
+  v.className = "tt-value";
+  v.textContent = valueText;
+  const l = document.createElement("div");
+  l.className = "tt-label";
+  l.textContent = labelText;
+  tooltip.append(v, l);
+  tooltip.style.display = "block";
+  moveTooltip(evt);
+}
+function moveTooltip(evt) {
+  const pad = 14;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  const r = tooltip.getBoundingClientRect();
+  if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - pad;
+  if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - pad;
+  tooltip.style.left = x + "px";
+  tooltip.style.top = y + "px";
+}
+function hideTooltip() { tooltip.style.display = "none"; }
+
+/* ---------------- chart specs ---------------- */
+function detClassRows(slice) {
+  const rows = [{ label: "mAP (all classes)", key: "mAP", slice: slice, strong: true }];
+  for (const c of detClasses()) rows.push({ label: c, key: "mAP_" + c, slice: slice });
+  return rows;
+}
+// Headline trio (mIoU + vegetation + flat surface), taxonomy-aware.
+function segTrioRows(slice) {
+  const grouped = currentTaxonomy === "grouped";
+  const veg = grouped ? "iou_grouped_vegetation" : "iou_vegetation";
+  const flat = grouped ? "iou_grouped_flat" : "iou_drivable_flat";
+  return [
+    { label: "mIoU", key: "mIoU", slice: slice },
+    { label: "vegetation", key: veg, slice: slice },
+    { label: grouped ? "flat surface" : "drivable_surface", key: flat, slice: slice },
+  ];
+}
+const CHART_SPECS = [
+  { el: "det-ap-class", task: "det3d", domainMax: 1, rows: () => detClassRows("") },
+  { el: "det-ap-slices", task: "det3d", domainMax: 1, rows: [
+    { label: "whole scene", key: "mAP", slice: "" },
+    { label: "road", key: "mAP", slice: DET_ROAD },
+  ]},
+  { el: "det-ap-class-road", task: "det3d", domainMax: 1, rows: () => detClassRows(DET_ROAD) },
+  { el: "det-heading-scores", task: "det3d", domainMax: 1, rows: [
+    { label: "mAPH", key: "mAPH", slice: "" },
+    { label: "NDS (mAP-based)", key: "map_based_nds", slice: "" },
+    { label: "NDS (mAPH-based)", key: "mapH_based_nds", slice: "" },
+  ]},
+  { el: "det-tp-ate", task: "det3d", rows: [{ label: "recall ≥ 0.10", key: "mATE_default", slice: "" }] },
+  { el: "det-tp-ase", task: "det3d", rows: [{ label: "recall ≥ 0.10", key: "mASE_default", slice: "" }] },
+  { el: "det-tp-aoe", task: "det3d", rows: [{ label: "recall ≥ 0.10", key: "mAOE_default", slice: "" }] },
+  { el: "det-tp-ave", task: "det3d", rows: [{ label: "recall ≥ 0.10", key: "mAVE_default", slice: "" }] },
+  { el: "det-a1", task: "det3d", rows: [
+    { label: "mean — whole scene", key: "mcorner_mean", slice: "" },
+    { label: "mean — road", key: "mcorner_mean", slice: DET_ROAD },
+    { label: "max — whole scene", key: "mcorner_max", slice: "" },
+  ]},
+  { el: "det-a2", task: "det3d", rows: [
+    { label: "whole scene", key: "mflip_rate", slice: "" },
+    { label: "road", key: "mflip_rate", slice: DET_ROAD },
+  ]},
+  { el: "det-a3", task: "det3d", rows: [
+    { label: "p95 — whole scene", key: "mnsurf_high", slice: "" },
+    { label: "p95 — road", key: "mnsurf_high", slice: DET_ROAD },
+    { label: "max |·| — whole scene", key: "mnsurf_absmax", slice: "" },
+  ]},
+  { el: "det-b1-fn", task: "det3d", rows: () => {
+    // Missed object in the corridor, per class — a missed pedestrian weighs on its own.
+    const rows = [{ label: "overall", key: "critical_fn_0p5m", slice: "", strong: true }];
+    for (const c of detClasses()) rows.push({ label: c, key: "critical_fn_" + c + "_0p5m", slice: "" });
+    return rows;
+  } },
+  { el: "det-b1-fp", task: "det3d", rows: () => {
+    const rows = [{ label: "overall", key: "critical_fp_0p5m", slice: "", strong: true }];
+    for (const c of detClasses()) rows.push({ label: c, key: "critical_fp_" + c + "_0p5m", slice: "" });
+    return rows;
+  } },
+  { el: "det-b2", task: "det3d", domainMax: 1, rows: () => {
+    // Whole-scene (B2 is TTC-weighted, not corridor-filtered): cw-mAP plus per class.
+    const rows = [{ label: "cw-mAP (all classes)", key: "cw_mAP", slice: "", strong: true }];
+    for (const c of detClasses()) rows.push({ label: c, key: "cw_mAP_" + c, slice: "" });
+    return rows;
+  } },
+  { el: "det-e1", task: "det3d", rows: [
+    { label: "ECE — whole scene", key: "ece", slice: "" },
+    { label: "ECE — road", key: "ece", slice: DET_ROAD },
+    { label: "macro ECE — whole scene", key: "ece_macro", slice: "" },
+  ]},
+  { el: "det-e3", task: "det3d", rows: [
+    { label: "whole scene", key: "confident_error_rate", slice: "" },
+    { label: "road", key: "confident_error_rate", slice: DET_ROAD },
+  ]},
+  { el: "seg-iou-class", task: "seg3d", domainMax: 1, rows: () => {
+    const rows = [{ label: "mIoU (all classes)", key: "mIoU", slice: "", strong: true }];
+    for (const [key, label] of segClasses()) rows.push({ label: label, key: "iou_" + key, slice: "" });
+    return rows;
+  } },
+  { el: "seg-acc-class", task: "seg3d", domainMax: 1, rows: () => {
+    // Per-class accuracy = recall (TP / points of that class); aAcc pooled, mAcc macro-mean.
+    const rows = [
+      { label: "accuracy — all points (aAcc)", key: "acc", slice: "", strong: true },
+      { label: "mean accuracy (mAcc)", key: "mRecall", slice: "", strong: true },
+    ];
+    for (const [key, label] of segClasses()) rows.push({ label: label, key: "recall_" + key, slice: "" });
+    return rows;
+  } },
+  { el: "seg-trio-whole", task: "seg3d", domainMax: 1, rows: () => segTrioRows("") },
+  { el: "seg-trio-road", task: "seg3d", domainMax: 1, rows: () => segTrioRows(SEG_ROAD) },
+  { el: "seg-trio-corridor", task: "seg3d", domainMax: 1, rows: () => segTrioRows(COR) },
+  { el: "seg-d1-rate", task: "seg3d", rows: () => {
+    // Overall (whole + road) plus every class on the road slice.
+    const rows = [
+      { label: "overall — whole", key: "error_rate", slice: "", strong: true },
+      { label: "overall — road", key: "error_rate", slice: SEG_ROAD, strong: true },
+    ];
+    for (const [key, label] of segClasses())
+      rows.push({ label: label + " — road", key: "error_rate_" + key, slice: SEG_ROAD });
+    return rows;
+  } },
+  { el: "seg-d1-clusters", task: "seg3d", rows: [
+    { label: "overall — whole", key: "error_clusters_per_frame", slice: "" },
+    { label: "overall — road", key: "error_clusters_per_frame", slice: SEG_ROAD },
+  ]},
+  { el: "seg-d3", task: "seg3d", rows: () => {
+    // Every class, whole scene and road (in the grouped taxonomy the fold already
+    // treats intra-group confusion as correct).
+    const rows = [];
+    for (const [key, label] of segClasses()) {
+      rows.push({ label: label + " — whole", key: "tolerant_error_rate_" + key, slice: "" });
+      rows.push({ label: label + " — road", key: "tolerant_error_rate_" + key, slice: SEG_ROAD });
+    }
+    return rows;
+  } },
+  { el: "seg-e1", task: "seg3d", rows: [
+    { label: "ECE — whole scene", key: "ece", slice: "" },
+    { label: "ECE — road", key: "ece", slice: SEG_ROAD },
+    { label: "ECE macro — whole scene", key: "ece_macro", slice: "" },
+  ]},
+  { el: "seg-e2", task: "seg3d", domainMax: 1, rows: [
+    { label: "whole scene", key: "entropy_auroc", slice: "" },
+    { label: "road", key: "entropy_auroc", slice: SEG_ROAD },
+  ]},
+  { el: "seg-e3", task: "seg3d", rows: [
+    { label: "whole scene", key: "confident_error_rate", slice: "" },
+    { label: "road", key: "confident_error_rate", slice: SEG_ROAD },
+    { label: "corridor", key: "confident_error_rate", slice: COR },
+  ]},
+];
+
+/* ---------------- metric order (most → least important for AD) ----------------
+   Display order is the article DOM order; this reorders the <article> blocks in
+   place at load, so the source can stay grouped by family while the report reads
+   in importance order. Adjust the arrays to re-rank — no block moves needed. */
+const DET_ORDER = [
+  "det-b2",   // collision-risk-weighted mAP (corridor)
+  "det-b1",   // critical FP/FN (corridor)
+  "det-ap",   // mAP + per-class AP
+  "det-heading", // mAPH + NDS
+  "det-a3",   // signed nearest-surface error
+  "det-a1",   // corner displacement error
+  "det-tp",   // TP errors mATE/ASE/AOE/AVE
+  "det-a2",   // heading-flip rate
+  "det-e3",   // confident-error rate
+  "det-e1",   // calibration (ECE)
+  "det-confusion", // class confusion matrix (diagnostic)
+  // det-b3 (occlusion-aware recall) — pending: needs the visible/overall suites
+  // surfaced into the report data schema.
+];
+const SEG_ORDER = [
+  "seg-d3",   // tolerant error — all classes
+  "seg-d1",   // error clusters — overall + all classes
+  // seg-d3 (partial detection) — pending: needs a det3d+seg3d test set.
+  "seg-iou",  // IoU + accuracy + P/R/F1 (classic core)
+  "seg-e3",   // confident-error rate
+  "seg-e1",   // calibration (ECE)
+  "seg-e2",   // uncertainty usefulness (entropy AUROC)
+  "seg-confusion", // class confusion matrix (diagnostic)
+];
+function reorderMetrics() {
+  for (const [sectionId, order] of [["det3d", DET_ORDER], ["seg3d", SEG_ORDER]]) {
+    const section = document.getElementById(sectionId);
+    if (!section) continue;
+    for (const id of order) {
+      const article = document.getElementById(id);
+      if (article) section.appendChild(article); // move to end, in importance order
+    }
+  }
+}
+
+/* ---------------- bar chart renderer ---------------- */
+const SVG_NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v);
+  return el;
+}
+function barPath(x, y, w, h, r) {
+  const rr = Math.min(r, Math.max(0.5, w - 0.5), h / 2);
+  return `M${x},${y} h${Math.max(0, w - rr)} a${rr},${rr} 0 0 1 ${rr},${rr} v${h - 2 * rr} a${rr},${rr} 0 0 1 ${-rr},${rr} h${-Math.max(0, w - rr)} z`;
+}
+function specRows(spec) {
+  // Per-class specs carry a `rows()` builder so they follow the active taxonomy
+  // (per-class vs grouped); fixed specs carry a plain array.
+  return typeof spec.rows === "function" ? spec.rows() : spec.rows;
+}
+function chartMax(spec) {
+  if (spec.domainMax) return spec.domainMax;
+  let max = 0;
+  for (const rng of RANGES)
+    for (const row of specRows(spec))
+      for (const model of MODELS) {
+        const v = metricValue(model, spec.task, row.slice, row.key, rng.id);
+        if (typeof v === "number" && v > max) max = v;
+      }
+  return niceCeil(max);
+}
+function specHasAnyValue(spec) {
+  for (const rng of RANGES)
+    for (const row of specRows(spec))
+      for (const model of MODELS)
+        if (typeof metricValue(model, spec.task, row.slice, row.key, rng.id) === "number") return true;
+  return false;
+}
+function renderChart(spec) {
+  const host = document.querySelector(`[data-chart="${spec.el}"]`);
+  if (!host) return;
+  host.textContent = "";
+  if (!specHasAnyValue(spec)) {
+    const note = document.createElement("div");
+    note.className = "slot-note";
+    note.textContent = MODELS.length === 0
+      ? "Awaiting test-run data — paste a release into the report-data block."
+      : (host.dataset.slotNote || "Not measured in this run.");
+    host.appendChild(note);
+    return;
+  }
+  const legend = document.createElement("div");
+  legend.className = "chart-legend";
+  MODELS.forEach((model) => {
+    const key = document.createElement("span");
+    key.className = "key";
+    const sw = document.createElement("span");
+    sw.className = "sw";
+    sw.style.background = model._color || SERIES[0];
+    const name = document.createElement("span");
+    const tag = TIER_TAG[model._tier] ? " " + TIER_TAG[model._tier] : "";
+    name.textContent = model.name + tag;
+    key.append(sw, name);
+    legend.appendChild(key);
+  });
+  host.appendChild(legend);
+
+  const GUT = 200, VAL = 118, W = 660;
+  const plotW = W - GUT - VAL;
+  const barH = 13, barGap = 2, groupPad = 12;
+  const blockH = MODELS.length * barH + (MODELS.length - 1) * barGap + groupPad;
+  const axisH = 26;
+  const rows = specRows(spec);
+  // Per-row delta of the newest release vs the one before it (skip if that one
+  // ran on an incompatible test set — the numbers are not comparable).
+  const newest = MODELS[MODELS.length - 1] || null;
+  const previous = MODELS.length > 1 ? MODELS[MODELS.length - 2] : null;
+  const deltaBase = previous && previous._tier !== "stale" ? previous : null;
+  const H = rows.length * blockH + axisH + 6;
+  const xmax = chartMax(spec);
+  const scale = (v) => Math.max(0, Math.min(1, v / xmax)) * plotW;
+
+  const wrap = document.createElement("div");
+  wrap.className = "chart-svg-wrap";
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img" });
+
+  const ticks = 5;
+  for (let t = 0; t <= ticks; t++) {
+    const x = GUT + (plotW * t) / ticks;
+    svg.appendChild(svgEl("line", { x1: x, y1: 4, x2: x, y2: H - axisH + 4, stroke: t === 0 ? "var(--line)" : "var(--grid)", "stroke-width": 1 }));
+    const label = svgEl("text", { x: x, y: H - axisH + 18, "text-anchor": "middle", class: "svg-label small" });
+    const tv = (xmax * t) / ticks;
+    label.textContent = xmax <= 1 ? tv.toFixed(2).replace(/\.?0+$/, "") || "0" : fmtValue(tv);
+    svg.appendChild(label);
+  }
+
+  rows.forEach((row, ri) => {
+    const y0 = ri * blockH + 4;
+    const mid = y0 + (MODELS.length * (barH + barGap) - barGap) / 2;
+    const rowLabel = svgEl("text", { x: GUT - 10, y: mid + 4, "text-anchor": "end", class: "svg-label" + (row.strong ? " strong" : "") });
+    rowLabel.textContent = row.label;
+    svg.appendChild(rowLabel);
+
+    MODELS.forEach((model, mi) => {
+      const y = y0 + mi * (barH + barGap);
+      const v = metricValue(model, spec.task, row.slice, row.key, currentRange);
+      const isNum = typeof v === "number";
+      const color = model._color || SERIES[0];
+      let mark = null;
+      if (isNum) {
+        mark = svgEl("path", { d: barPath(GUT, y, scale(v), barH, 4), fill: color, class: "bar-mark" });
+        svg.appendChild(mark);
+      }
+      const valueText = svgEl("text", { x: GUT + (isNum ? scale(v) : 0) + 6, y: y + barH - 3, class: "svg-label small" });
+      valueText.textContent = fmtValue(isNum ? v : null);
+      svg.appendChild(valueText);
+
+      const hit = svgEl("rect", { x: 0, y: y - 1, width: W, height: barH + 2, class: "bar-hit", tabindex: "0" });
+      const labelText = `${model.name} · ${row.label}`;
+      const tipValue = fmtValue(isNum ? v : null);
+      hit.addEventListener("pointerenter", (e) => { if (mark) mark.classList.add("hover"); showTooltip(e, tipValue, labelText); });
+      hit.addEventListener("pointermove", moveTooltip);
+      hit.addEventListener("pointerleave", () => { if (mark) mark.classList.remove("hover"); hideTooltip(); });
+      hit.addEventListener("focus", () => showTooltip({ clientX: 40, clientY: 40 }, tipValue, labelText));
+      hit.addEventListener("blur", hideTooltip);
+      svg.appendChild(hit);
+    });
+
+    if (deltaBase) {
+      const cur = metricValue(newest, spec.task, row.slice, row.key, currentRange);
+      const prev = metricValue(deltaBase, spec.task, row.slice, row.key, currentRange);
+      if (typeof cur === "number" && typeof prev === "number") {
+        const d = cur - prev;
+        const flat = Math.abs(d) < 5e-4;
+        const improved = direction(row.key) === "lower" ? d < 0 : d > 0;
+        const cls = flat ? "flat" : improved ? "up-good" : "down-bad";
+        const yNewest = y0 + (MODELS.length - 1) * (barH + barGap) + barH - 3;
+        const dtext = svgEl("text", { x: W, y: yNewest, "text-anchor": "end", class: "svg-delta " + cls });
+        dtext.textContent = (flat ? "±" : d > 0 ? "▲" : "▼") + fmtValue(Math.abs(d));
+        svg.appendChild(dtext);
+      }
+    }
+  });
+
+  wrap.appendChild(svg);
+  host.appendChild(wrap);
+}
+
+/* ---------------- confusion matrix heatmap ---------------- */
+let currentConfusionSlice = "whole";
+const CONFUSION_SLICES = [
+  { id: "whole", label: "Whole scene" },
+  { id: "road", label: "Road" },
+  { id: "corridor", label: "Corridor" },
+];
+function confusionClasses(task) {
+  // {key, label} per class in the active taxonomy (det uses bare keys, seg [key,label]).
+  return task === "det3d"
+    ? detClasses().map((c) => ({ key: c, label: c }))
+    : segClasses().map(([k, l]) => ({ key: k, label: l }));
+}
+function confusionSliceName(task, sliceId) {
+  if (sliceId === "road") return task === "det3d" ? DET_ROAD : SEG_ROAD;
+  if (sliceId === "corridor") return COR;
+  return "";
+}
+function renderConfusion(task) {
+  const host = document.querySelector(`[data-confusion="${task}"]`);
+  if (!host) return;
+  host.textContent = "";
+  const model = MODELS.length ? MODELS[MODELS.length - 1] : null;
+  const classes = confusionClasses(task);
+  const slice = confusionSliceName(task, currentConfusionSlice);
+  const raw = classes.map((t) => classes.map((p) =>
+    metricValue(model, task, slice, `confusion_${t.key}__${p.key}`, currentRange)));
+  const hasData = model && raw.some((row) => row.some((v) => typeof v === "number"));
+  if (!hasData) {
+    const note = document.createElement("div");
+    note.className = "slot-note";
+    note.textContent = MODELS.length === 0
+      ? "Awaiting test-run data — paste a release into the report-data block."
+      : "Not measured in this run.";
+    host.appendChild(note);
+    return;
+  }
+  const n = classes.length;
+  const rowTotals = raw.map((row) => row.reduce((s, v) => s + (typeof v === "number" ? v : 0), 0));
+  const cs = n > 10 ? 24 : 34, LBL = 168, TOP = 128;
+  const W = LBL + n * cs + 8, H = TOP + n * cs + 24;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img" });
+  classes.forEach((p, j) => {
+    const x = LBL + j * cs + cs / 2;
+    const t = svgEl("text", { x, y: TOP - 6, class: "cm-label", transform: `rotate(-45 ${x} ${TOP - 6})`, "text-anchor": "start" });
+    t.textContent = p.label;
+    svg.appendChild(t);
+  });
+  const newest = model;
+  classes.forEach((tc, i) => {
+    const y = TOP + i * cs;
+    const rl = svgEl("text", { x: LBL - 8, y: y + cs / 2 + 3, class: "cm-label true", "text-anchor": "end" });
+    rl.textContent = tc.label;
+    svg.appendChild(rl);
+    classes.forEach((pc, j) => {
+      const x = LBL + j * cs;
+      const count = raw[i][j];
+      const total = rowTotals[i];
+      const norm = (typeof count === "number" && total > 0) ? count / total : 0;
+      const fill = `color-mix(in oklab, var(--series-1) ${Math.round(norm * 100)}%, var(--surface))`;
+      svg.appendChild(svgEl("rect", { x, y, width: cs, height: cs, fill, class: i === j ? "cm-cell cm-diag" : "cm-cell" }));
+      if (norm >= 0.005) {
+        const vt = svgEl("text", { x: x + cs / 2, y: y + cs / 2 + 3, class: "cm-val", "text-anchor": "middle", fill: norm > 0.5 ? "var(--surface)" : "var(--ink2)" });
+        vt.textContent = norm >= 0.995 ? "1" : norm.toFixed(2).replace(/^0/, "");
+        svg.appendChild(vt);
+      }
+      const hit = svgEl("rect", { x, y, width: cs, height: cs, class: "cm-hit", tabindex: "0" });
+      const cnt = typeof count === "number" ? count : 0;
+      const label = `${newest.name} · true ${tc.label} → pred ${pc.label}`;
+      const tip = `${(norm * 100).toFixed(1)}%  ·  ${fmtValue(cnt)}`;
+      hit.addEventListener("pointerenter", (e) => showTooltip(e, tip, label));
+      hit.addEventListener("pointermove", moveTooltip);
+      hit.addEventListener("pointerleave", hideTooltip);
+      hit.addEventListener("focus", () => showTooltip({ clientX: 40, clientY: 40 }, tip, label));
+      hit.addEventListener("blur", hideTooltip);
+      svg.appendChild(hit);
+    });
+  });
+  const midY = TOP + (n * cs) / 2;
+  const cap = svgEl("text", { x: 14, y: midY, class: "cm-label true", "text-anchor": "middle", transform: `rotate(-90 14 ${midY})` });
+  cap.textContent = "true class ↓  ·  predicted →";
+  svg.appendChild(cap);
+  const wrap = document.createElement("div");
+  wrap.className = "cm-wrap";
+  wrap.appendChild(svg);
+  host.appendChild(wrap);
+}
+function renderConfusions() {
+  const tasks = activeTasks();
+  if (tasks.has("det3d")) renderConfusion("det3d");
+  if (tasks.has("seg3d")) renderConfusion("seg3d");
+}
+function buildConfusionSliceTabs() {
+  for (const hostId of ["det-confusion-slice", "seg-confusion-slice"]) {
+    const host = document.getElementById(hostId);
+    if (!host) continue;
+    host.textContent = "";
+    for (const s of CONFUSION_SLICES) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = s.label;
+      btn.setAttribute("aria-pressed", s.id === currentConfusionSlice ? "true" : "false");
+      btn.addEventListener("click", () => {
+        currentConfusionSlice = s.id;
+        buildConfusionSliceTabs();
+        renderConfusions();
+      });
+      host.appendChild(btn);
+    }
+  }
+}
+
+/* ---------------- summary tiles ---------------- */
+// Headline summary. Each tile names its bucket explicitly, so it is stable across
+// the taxonomy tab — "flat-surface accuracy" always reads the grouped bucket
+// (drivable + sidewalk merged, so their mutual confusion is ignored).
+// Legacy-5 bridge: mean over car, truck, bus, pedestrian plus the folded
+// two-wheeler (motorcycle+bicycle, their mutual confusion ignored). Derived
+// client-side from the per-class and grouped buckets — per-class APs are
+// independent, so this equals what a dedicated legacy suite would report.
+function legacy5(model, prefix, rangeId) {
+  const det = model.metrics["det3d"];
+  const grouped = model.metrics["det3d_grouped"];
+  if (!det || !grouped) return undefined;
+  const suffix = rangeId ? "_" + rangeId : "";
+  const values = ["car", "truck", "bus", "pedestrian"].map(
+    (name) => det[prefix + "_" + name + suffix]
+  );
+  values.push(grouped[prefix + "_grouped_two_wheeler" + suffix]);
+  if (values.some((v) => v === undefined || v === null)) return undefined;
+  return values.reduce((total, v) => total + v, 0) / values.length;
+}
+
+const TILES = [
+  { label: "mAP", task: "det3d", bucket: "det3d", key: "mAP", slice: "" },
+  { label: "mAPH", task: "det3d", bucket: "det3d", key: "mAPH", slice: "" },
+  { label: "mAP-legacy5", task: "det3d", key: "mAP_legacy5", derive: (m, r) => legacy5(m, "mAP", r),
+    note: "mean of car / truck / bus / pedestrian / two-wheeler (motorcycle+bicycle folded) — comparable with pre-taxonomy reports" },
+  { label: "mAPH-legacy5", task: "det3d", key: "mAPH_legacy5", derive: (m, r) => legacy5(m, "mAPH", r),
+    note: "heading-aware legacy-5 mean, same class subset and fold" },
+  { label: "Collision-weighted mAP", task: "det3d", bucket: "det3d", key: "cw_mAP", slice: "" },
+  { label: "Critical FP / frame", task: "det3d", bucket: "det3d", key: "critical_fp_0p5m", slice: "" },
+  { label: "Critical FN / frame", task: "det3d", bucket: "det3d", key: "critical_fn_0p5m", slice: "" },
+  { label: "mIoU", task: "seg3d", bucket: "seg3d", key: "mIoU", slice: "" },
+  { label: "Accuracy", task: "seg3d", bucket: "seg3d", key: "acc", slice: "" },
+  { label: "Flat-surface accuracy", task: "seg3d", bucket: "seg3d_grouped", key: "recall_grouped_flat", slice: "",
+    note: "drivable_surface + other_flat_surface/sidewalk merged — their mutual confusion is ignored" },
+  { label: "Vegetation accuracy", task: "seg3d", bucket: "seg3d", key: "recall_vegetation", slice: "" },
+];
+function tileValue(model, tile, rangeId) {
+  if (tile.derive) return tile.derive(model, rangeId);
+  const bucket = model.metrics[tile.bucket];
+  if (!bucket) return undefined;
+  return bucket[(tile.slice ? tile.slice + "/" : "") + tile.key + "_" + rangeId];
+}
+function renderTiles() {
+  const host = document.getElementById("summary-tiles");
+  host.textContent = "";
+  if (!MODELS.length) {
+    const note = document.createElement("div");
+    note.className = "slot-note";
+    note.style.gridColumn = "1 / -1";
+    note.textContent = "Awaiting the first release — paste a model into the report-data block.";
+    host.appendChild(note);
+    return;
+  }
+  const newest = MODELS[MODELS.length - 1];
+  const previous = MODELS.length > 1 ? MODELS[MODELS.length - 2] : null;
+  const tasks = activeTasks();
+  for (const tile of TILES) {
+    if (!tasks.has(tile.task)) continue;
+    const dir = direction(tile.key + "_x");
+    const value = tileValue(newest, tile, currentRange);
+    const div = document.createElement("div");
+    div.className = "tile";
+    if (tile.note) div.title = tile.note;
+    const task = document.createElement("div");
+    task.className = "t-task";
+    task.textContent = tile.task;
+    const label = document.createElement("div");
+    label.className = "t-label";
+    label.textContent = tile.label;
+    const val = document.createElement("div");
+    val.className = "t-value";
+    val.textContent = fmtValue(typeof value === "number" ? value : null);
+    div.append(task, label, val);
+    if (previous) {
+      const prev = tileValue(previous, tile, currentRange);
+      const delta = document.createElement("div");
+      if (typeof value === "number" && typeof prev === "number") {
+        const d = value - prev;
+        const improved = dir === "lower" ? d < 0 : d > 0;
+        delta.className = "t-delta " + (Math.abs(d) < 1e-9 ? "flat" : improved ? "up-good" : "down-bad");
+        delta.textContent = `${d >= 0 ? "▲" : "▼"} ${fmtValue(Math.abs(d))}`;
+      } else {
+        delta.className = "t-delta flat";
+        delta.textContent = "";
+      }
+      div.appendChild(delta);
+    }
+    host.appendChild(div);
+  }
+}
+
+/* ---------------- lineage registry ---------------- */
+function linkedCell(text, url) {
+  const td = document.createElement("td");
+  if (url) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.textContent = text;
+    a.rel = "noopener";
+    td.appendChild(a);
+  } else {
+    td.textContent = text || "–";
+  }
+  return td;
+}
+function renderRegistry() {
+  const body = document.getElementById("registry-body");
+  body.textContent = "";
+  if (!MODELS.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 6;
+    td.className = "slot-note";
+    td.textContent = "No releases yet — paste a model entry into the report-data block at the bottom of this file.";
+    tr.appendChild(td);
+    body.appendChild(tr);
+    return;
+  }
+  MODELS.forEach((model) => {
+    const tr = document.createElement("tr");
+    const name = document.createElement("td");
+    const sw = document.createElement("span");
+    sw.className = "sw";
+    sw.style.background = model._color || SERIES[0];
+    const strong = document.createElement("b");
+    strong.textContent = model.name;
+    name.append(sw, strong);
+    tr.appendChild(name);
+    const date = document.createElement("td");
+    date.textContent = model.date || "–";
+    tr.appendChild(date);
+    tr.appendChild(linkedCell(model.repo_commit, model.repo_commit_url));
+    tr.appendChild(linkedCell("artifacts", model.artifacts_url));
+    tr.appendChild(linkedCell(model.universe_commit, model.universe_commit_url));
+    const cfg = document.createElement("td");
+    const code = document.createElement("code");
+    code.textContent = model.eval_config || "–";
+    cfg.appendChild(code);
+    tr.appendChild(cfg);
+    body.appendChild(tr);
+  });
+}
+
+/* ---------------- appendix tables ---------------- */
+function sliceOrder(key) {
+  return key.includes("/") ? "1" + key : "0" + key;
+}
+function buildAppendix(task, tableId, countId) {
+  const bucket = taxonomyBucket(task);
+  const keys = new Set();
+  for (const model of MODELS)
+    for (const key of Object.keys(model.metrics[bucket] || {})) keys.add(key);
+  const sorted = Array.from(keys).sort((a, b) => sliceOrder(a).localeCompare(sliceOrder(b)));
+
+  const table = document.getElementById(tableId);
+  table.textContent = "";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  const thKey = document.createElement("th");
+  thKey.textContent = "Metric key";
+  const thDir = document.createElement("th");
+  thDir.textContent = "better";
+  headRow.append(thKey, thDir);
+  for (const model of MODELS) {
+    const th = document.createElement("th");
+    th.className = "num";
+    th.textContent = model.name;
+    headRow.appendChild(th);
+  }
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  if (!MODELS.length) {
+    const tr = document.createElement("tr");
+    tr.dataset.note = "1";
+    const td = document.createElement("td");
+    td.colSpan = 2;
+    td.className = "slot-note";
+    td.textContent = "No data yet — paste a release into the report-data block.";
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+  for (const key of sorted) {
+    const tr = document.createElement("tr");
+    const dir = direction(key);
+    const values = MODELS.map((m) => {
+      const v = (m.metrics[bucket] || {})[key];
+      return typeof v === "number" ? v : null;
+    });
+    let best = null;
+    if (dir !== "neutral") {
+      const present = values.filter((v) => v !== null);
+      if (present.length > 1) best = dir === "lower" ? Math.min(...present) : Math.max(...present);
+    }
+    const keyCell = document.createElement("td");
+    keyCell.textContent = key;
+    const dirCell = document.createElement("td");
+    dirCell.className = "dir";
+    dirCell.textContent = dir === "higher" ? "↑" : dir === "lower" ? "↓" : "·";
+    tr.append(keyCell, dirCell);
+    values.forEach((v) => {
+      const td = document.createElement("td");
+      td.className = "num" + (best !== null && v === best ? " best" : "");
+      td.textContent = fmtValue(v);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  const count = document.getElementById(countId);
+  if (count) count.textContent = sorted.length + " of " + sorted.length + " keys";
+}
+function wireAppendixSearch(tableId, searchId, countId) {
+  const input = document.getElementById(searchId);
+  const count = document.getElementById(countId);
+  if (!input) return;
+  input.addEventListener("input", () => {
+    const needle = input.value.trim().toLowerCase();
+    const tbody = document.getElementById(tableId).tBodies[0];
+    let total = 0, visible = 0;
+    if (tbody) for (const tr of tbody.rows) {
+      if (tr.dataset.note) continue;
+      total += 1;
+      const show = !needle || tr.cells[0].textContent.toLowerCase().includes(needle);
+      tr.style.display = show ? "" : "none";
+      if (show) visible += 1;
+    }
+    if (count) count.textContent = visible + " of " + total + " keys";
+  });
+}
+
+/* ---------------- metadata bindings & metric spec ---------------- */
+function setBind(name, text) {
+  for (const el of document.querySelectorAll('[data-bind="' + name + '"]')) el.textContent = text;
+}
+function bindMeta() {
+  const ts = activeSet();
+  const spec = METRIC_SPEC;
+  setBind("metric-spec", spec && spec.bundle ? "metric-spec: " + spec.bundle : "metric-spec: —");
+  setBind("metric-spec-bundle", spec && spec.bundle ? spec.bundle : "—");
+  setBind("test-set", ts.label ? "test set: " + ts.label : "test set: —");
+  setBind("test-set-version", ts.version ? "v" + ts.version : "v—");
+  const status = document.querySelector('[data-bind="data-status"]');
+  if (status) {
+    if (MODELS.length) {
+      status.textContent = MODELS.length + (MODELS.length === 1 ? " release" : " releases") + " on this test set";
+      status.classList.remove("warn");
+    } else {
+      status.textContent = "No data yet — paste results into the report-data block";
+      status.classList.add("warn");
+    }
+  }
+  const newest = MODELS.length ? MODELS[MODELS.length - 1] : null;
+  const dateEl = document.querySelector('[data-bind="generated-date"]');
+  if (dateEl) dateEl.textContent = newest && newest.date ? "date: " + newest.date : "date: fill on release";
+  const commit = document.getElementById("commit-link");
+  if (commit) {
+    const hash = newest && newest.repo_commit ? String(newest.repo_commit) : null;
+    const url = newest
+      ? (newest.repo_commit_url
+         || (DATA.repo_url && hash ? DATA.repo_url.replace(/\/+$/, "") + "/commit/" + hash : null))
+      : null;
+    commit.textContent = "commit: " + (hash ? hash.slice(0, 10) : "—");
+    if (url) commit.setAttribute("href", url);
+    else commit.removeAttribute("href");
+  }
+}
+function renderMetricSpec() {
+  const table = document.getElementById("metric-spec-table");
+  if (!table) return;
+  table.textContent = "";
+  const thead = document.createElement("thead");
+  const hr = document.createElement("tr");
+  for (const h of ["Metric name", "Version", "Parameters"]) {
+    const th = document.createElement("th");
+    th.textContent = h;
+    hr.appendChild(th);
+  }
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  const metrics = METRIC_SPEC && METRIC_SPEC.metrics ? METRIC_SPEC.metrics : null;
+  const names = metrics ? Object.keys(metrics).sort() : [];
+  if (!names.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 3;
+    td.className = "slot-note";
+    td.textContent = "No metric_spec yet — set it in the report-data block to record versions and parameters.";
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+  for (const name of names) {
+    const entry = metrics[name] || {};
+    const tr = document.createElement("tr");
+    const nameCell = document.createElement("td");
+    const code = document.createElement("code");
+    code.textContent = entry.version ? name + "@v" + entry.version : name;
+    nameCell.appendChild(code);
+    const verCell = document.createElement("td");
+    verCell.className = "num";
+    verCell.textContent = entry.version || "–";
+    const paramCell = document.createElement("td");
+    paramCell.textContent = entry.params ? JSON.stringify(entry.params) : "–";
+    tr.append(nameCell, verCell, paramCell);
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+}
+
+/* ---------------- test-set info ---------------- */
+function renderDistribution(dist) {
+  const wrap = document.createElement("div");
+  const title = document.createElement("div");
+  title.className = "dist-title";
+  title.textContent = dist.title + (dist.unit ? " (" + dist.unit + ")" : "");
+  wrap.appendChild(title);
+  const bars = Array.isArray(dist.bars) ? dist.bars : [];
+  const max = bars.reduce((m, b) => Math.max(m, typeof b.value === "number" ? b.value : 0), 0) || 1;
+  for (const b of bars) {
+    const row = document.createElement("div");
+    row.className = "dist-row";
+    const lbl = document.createElement("div");
+    lbl.className = "lbl";
+    lbl.textContent = b.label;
+    lbl.title = b.label;
+    const track = document.createElement("div");
+    track.className = "dist-track";
+    const fill = document.createElement("div");
+    fill.className = "dist-fill";
+    fill.style.width = (typeof b.value === "number" ? (100 * b.value) / max : 0) + "%";
+    track.appendChild(fill);
+    const num = document.createElement("div");
+    num.className = "num";
+    num.textContent = fmtValue(typeof b.value === "number" ? b.value : null);
+    row.append(lbl, track, num);
+    wrap.appendChild(row);
+  }
+  return wrap;
+}
+function renderTestSetInfo() {
+  const ts = activeSet();
+  const ds = ts.dataset || null;
+  const statsHost = document.getElementById("ts-stats");
+  const distHost = document.getElementById("ts-distributions");
+  const sceneList = document.getElementById("ts-scene-list");
+  const sceneCount = document.getElementById("ts-scene-count");
+  statsHost.textContent = "";
+  distHost.textContent = "";
+  sceneList.textContent = "";
+  if (!ds) {
+    const note = document.createElement("div");
+    note.className = "slot-note";
+    note.style.gridColumn = "1 / -1";
+    note.textContent = "Awaiting test-set metadata — add a dataset object to this test set in the report-data block.";
+    statsHost.appendChild(note);
+    sceneCount.textContent = "0";
+    return;
+  }
+  const stats = [
+    ["Frames", ds.num_frames], ["Scenes", ds.num_scenes],
+    ["GT objects", ds.num_objects], ["GT points", ds.num_points],
+    ["Source DBs", Array.isArray(ds.sources) ? ds.sources.length : undefined],
+  ];
+  for (const [k, v] of stats) {
+    if (v === undefined || v === null) continue;
+    const cell = document.createElement("div");
+    cell.className = "ts-stat";
+    const kk = document.createElement("div");
+    kk.className = "k";
+    kk.textContent = k;
+    const vv = document.createElement("div");
+    vv.className = "v";
+    vv.textContent = fmtValue(v);
+    cell.append(kk, vv);
+    statsHost.appendChild(cell);
+  }
+  if (Array.isArray(ds.sources) && ds.sources.length) {
+    const cell = document.createElement("div");
+    cell.className = "ts-stat";
+    cell.style.gridColumn = "1 / -1";
+    const kk = document.createElement("div");
+    kk.className = "k";
+    kk.textContent = "Sources";
+    const vv = document.createElement("div");
+    vv.textContent = ds.sources.map((s) => s.db).join(" · ");
+    cell.append(kk, vv);
+    statsHost.appendChild(cell);
+  }
+  for (const dist of (ds.distributions || [])) distHost.appendChild(renderDistribution(dist));
+  // Scenes are grouped under their source DB: one entry per DB with its scene
+  // fragments (<db>/<uuid>/<version>) nested beneath.
+  const sources = Array.isArray(ds.sources) ? ds.sources : [];
+  let total = 0;
+  for (const src of sources) {
+    const scenes = Array.isArray(src.scenes) ? src.scenes : [];
+    total += scenes.length;
+    const dbLi = document.createElement("li");
+    dbLi.className = "scene-db";
+    const head = document.createElement("b");
+    head.textContent = `${src.db} (${scenes.length})`;
+    dbLi.appendChild(head);
+    const sub = document.createElement("ul");
+    for (const s of scenes) {
+      const li = document.createElement("li");
+      li.textContent = s;
+      sub.appendChild(li);
+    }
+    dbLi.appendChild(sub);
+    sceneList.appendChild(dbLi);
+  }
+  sceneCount.textContent = String(total);
+}
+
+/* ---------------- section visibility ---------------- */
+function toggleSections() {
+  const tasks = activeTasks();
+  for (const el of document.querySelectorAll("[data-task]"))
+    el.style.display = tasks.has(el.dataset.task) ? "" : "none";
+}
+
+/* ---------------- tabs, master render & boot ---------------- */
+function renderAllCharts() {
+  for (const spec of CHART_SPECS) renderChart(spec);
+  renderConfusions();
+  renderTiles();
+}
+/* ---------------- release colouring ----------------
+   Colour encodes the MODEL, greying encodes the release. Each distinct `model`
+   (e.g. PTv3, BEVFusion) gets one base hue; the newest release keeps the full,
+   saturated hue, older releases are progressively de-saturated toward grey (same
+   lightness, so they stay clearly the same hue — just greyer), and a release run
+   on a different test-set MAJOR version is greyed the most. Mixing toward grey
+   (not the page background) keeps every bar legible in light and dark themes. */
+function majorOf(version) {
+  return version == null ? null : String(version).split(".")[0];
+}
+function muteToward(hue, pct) {
+  // De-saturate toward a mid grey — keeps the hue readable, unlike mixing toward
+  // the background which would crush older releases to near-black.
+  return "color-mix(in oklab, " + hue + ", var(--muted) " + pct + "%)";
+}
+function assignModelColors(models, testSet) {
+  const testMajor = majorOf(testSet.version);
+  const families = [];
+  for (const m of models) {
+    const family = m.model || m.name;
+    if (!families.includes(family)) families.push(family);
+  }
+  const familyHue = {};
+  families.forEach((family, i) => { familyHue[family] = SERIES[i % SERIES.length]; });
+  for (const family of families) {
+    const group = models
+      .filter((m) => (m.model || m.name) === family)
+      .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+    const newest = group[group.length - 1];
+    group.forEach((m, idx) => {
+      const stepsFromNewest = group.length - 1 - idx;
+      const stale = m.test_set_version != null && majorOf(m.test_set_version) !== testMajor;
+      m._baseHue = familyHue[family];
+      if (stale) {
+        m._color = muteToward(m._baseHue, 60);  // greyed the most
+        m._tier = "stale";
+      } else if (m === newest) {
+        m._color = m._baseHue;                  // full, saturated hue
+        m._tier = "current";
+      } else {
+        m._color = muteToward(m._baseHue, Math.min(48, 30 + (stepsFromNewest - 1) * 10));
+        m._tier = "previous";
+      }
+    });
+  }
+}
+// The release name (v0.3, v0.2, …) already identifies each bar; greying conveys
+// the tier, so no extra "previous" / "different test set" tag is appended.
+const TIER_TAG = { current: "", previous: "", stale: "" };
+
+function render() {
+  const ts = activeSet();
+  MODELS = ts.models || [];
+  assignModelColors(MODELS, ts);
+  METRIC_SPEC = ts.metric_spec || null;
+  toggleSections();
+  renderTestSetInfo();
+  bindMeta();
+  renderRegistry();
+  renderAllCharts();
+  buildAppendix("det3d", "det-appendix", "det-count");
+  buildAppendix("seg3d", "seg-appendix", "seg-count");
+  renderMetricSpec();
+  for (const id of ["det-search", "seg-search"]) {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  }
+}
+function buildTestSetTabs() {
+  const host = document.getElementById("testset-tabs");
+  if (!TEST_SETS.length) {
+    const note = document.createElement("span");
+    note.className = "hint";
+    note.textContent = "no test sets defined";
+    host.appendChild(note);
+    return;
+  }
+  TEST_SETS.forEach((ts, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = ts.label;
+    btn.setAttribute("aria-pressed", i === currentTestSet ? "true" : "false");
+    btn.addEventListener("click", () => {
+      currentTestSet = i;
+      for (const other of host.children)
+        if (other.setAttribute) other.setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-pressed", "true");
+      render();
+    });
+    host.appendChild(btn);
+  });
+}
+function buildRangeTabs() {
+  const host = document.getElementById("range-tabs");
+  for (const rng of RANGES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = rng.label;
+    btn.setAttribute("aria-pressed", rng.id === currentRange ? "true" : "false");
+    btn.addEventListener("click", () => {
+      currentRange = rng.id;
+      for (const other of host.children) other.setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-pressed", "true");
+      renderAllCharts();
+    });
+    host.appendChild(btn);
+  }
+}
+function buildTaxonomyTabs() {
+  const host = document.getElementById("taxonomy-tabs");
+  for (const tax of TAXONOMIES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = tax.label;
+    btn.setAttribute("aria-pressed", tax.id === currentTaxonomy ? "true" : "false");
+    btn.addEventListener("click", () => {
+      currentTaxonomy = tax.id;
+      for (const other of host.children) other.setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-pressed", "true");
+      renderAllCharts();
+      buildAppendix("det3d", "det-appendix", "det-count");
+      buildAppendix("seg3d", "seg-appendix", "seg-count");
+    });
+    host.appendChild(btn);
+  }
+}
+
+reorderMetrics();
+buildTestSetTabs();
+buildRangeTabs();
+buildTaxonomyTabs();
+buildConfusionSliceTabs();
+wireAppendixSearch("det-appendix", "det-search", "det-count");
+wireAppendixSearch("seg-appendix", "seg-search", "seg-count");
+render();
+</script>
+</body>
+</html>
