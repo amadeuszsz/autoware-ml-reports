@@ -141,7 +141,6 @@
 
   .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin: 18px 0; box-shadow: var(--shadow); }
   .metric-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
-  .metric-id { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; font-weight: 700; font-size: 0.9rem; color: var(--accent-text); background: var(--accent-soft); border-radius: 6px; padding: 2px 8px; }
   .metric h3 { margin: 0; flex: 1 1 auto; }
   .metric > p { font-size: 0.95rem; }
 
@@ -235,7 +234,6 @@
   .chart-svg-wrap { overflow-x: auto; text-align: center; }
   .cm-wrap { overflow-x: auto; }
   .cm-cell { stroke: var(--surface); stroke-width: 1; }
-  .cm-cell.cm-diag { stroke: var(--ink); stroke-width: 1.5; }
   .cm-label { font-family: system-ui, sans-serif; font-size: 10px; fill: var(--ink2); }
   .cm-label.true { font-weight: 600; fill: var(--ink); }
   .cm-val { font-family: system-ui, sans-serif; font-size: 9px; }
@@ -1269,6 +1267,13 @@
       trusts a score it should not. ECE measures that gap between the detection score and the empirical
       precision — the detection twin of the segmentation calibration metric.
     </p>
+    <p style="font-size:0.9rem; color:var(--ink2);">
+      Two averagings are reported. <b>ECE</b> pools every detection into the score bins, so the classes
+      that dominate the data — cars here — dominate the number. <b>Macro ECE</b> computes the same
+      binned gap per class and averages the classes with equal weight, so a rare class that is badly
+      calibrated cannot be hidden behind a common one that is well calibrated. The two are equal only
+      when calibration quality is uniform across classes; read the gap between them as how uneven it is.
+    </p>
     <figure>
       <div class="fig-wrap">
       <svg viewBox="0 0 480 300" width="480" height="300" role="img" aria-labelledby="fig-det-e1-title">
@@ -1297,6 +1302,7 @@
       <span class="lead">Config</span>
       <span class="chip">15 score bins</span>
       <span class="chip">correctness = box is a true positive (bin accuracy = precision)</span>
+      <span class="chip">ECE: detection-weighted · macro ECE: per class, equally weighted</span>
       <span class="chip">lower is better ↓</span>
     </div>
     <div class="chart-card">
@@ -1560,6 +1566,14 @@
       confidently wrong — downstream logic trusts a mistake. Expected Calibration Error measures the gap
       between confidence and correctness.
     </p>
+    <p style="font-size:0.9rem; color:var(--ink2);">
+      Two averagings are reported. <b>ECE</b> pools every point into the confidence bins, so the classes
+      that carry the most points — road and ground — dominate the number. <b>Macro ECE</b> computes the
+      same binned gap per class and averages the classes with equal weight, so a rare class that is badly
+      calibrated cannot be hidden behind a common one that is well calibrated. That is why the macro value
+      is the larger one here: pooled calibration looks excellent because most points belong to a handful of
+      easy, well-calibrated classes.
+    </p>
     <figure>
       <div class="fig-wrap">
       <svg viewBox="0 0 480 300" width="480" height="300" role="img" aria-labelledby="fig-e1-title">
@@ -1586,6 +1600,7 @@
       <span class="lead">Config</span>
       <span class="chip">15 confidence bins</span>
       <span class="chip">measured as shipped — before any recalibration</span>
+      <span class="chip">ECE: point-weighted · macro ECE: per class, equally weighted</span>
       <span class="chip">lower is better ↓</span>
     </div>
     <div class="chart-card">
@@ -2058,7 +2073,7 @@ const CHART_SPECS = [
   { el: "seg-e1", task: "seg3d", rows: [
     { label: "ECE — whole scene", key: "ece", slice: "" },
     { label: "ECE — road", key: "ece", slice: SEG_ROAD },
-    { label: "ECE macro — whole scene", key: "ece_macro", slice: "" },
+    { label: "macro ECE — whole scene", key: "ece_macro", slice: "" },
   ]},
   { el: "seg-e2", task: "seg3d", domainMax: 1, rows: [
     { label: "whole scene", key: "entropy_auroc", slice: "" },
@@ -2315,7 +2330,7 @@ function renderConfusion(task) {
       const total = rowTotals[i];
       const norm = (typeof count === "number" && total > 0) ? count / total : 0;
       const fill = `color-mix(in oklab, var(--series-1) ${Math.round(norm * 100)}%, var(--surface))`;
-      svg.appendChild(svgEl("rect", { x, y, width: cs, height: cs, fill, class: i === j ? "cm-cell cm-diag" : "cm-cell" }));
+      svg.appendChild(svgEl("rect", { x, y, width: cs, height: cs, fill, class: "cm-cell" }));
       if (norm >= 0.005) {
         const vt = svgEl("text", { x: x + cs / 2, y: y + cs / 2 + 3, class: "cm-val", "text-anchor": "middle", fill: norm > 0.5 ? "var(--surface)" : "var(--ink2)" });
         vt.textContent = norm >= 0.995 ? "1" : norm.toFixed(2).replace(/^0/, "");
