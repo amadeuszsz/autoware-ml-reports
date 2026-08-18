@@ -233,15 +233,6 @@
     box-shadow: var(--shadow);
   }
   .metric-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
-  .metric-id {
-    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: var(--accent-text);
-    background: var(--accent-soft);
-    border-radius: 6px;
-    padding: 2px 8px;
-  }
   .metric h3 { margin: 0; flex: 1 1 auto; }
   .metric > p { font-size: 0.95rem; }
 
@@ -314,22 +305,8 @@
   .family-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 18px 0; }
   @media (max-width: 760px) { .family-grid { grid-template-columns: 1fr; } }
   .family { border-top: 3px solid var(--accent); }
-  .family .fam-letter {
-    font-family: Charter, Georgia, serif;
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--accent-text);
-    line-height: 1;
-  }
   .family ul { list-style: none; padding: 0; margin: 10px 0 0; }
   .family li { display: flex; gap: 8px; align-items: baseline; margin: 6px 0; font-size: 0.92rem; }
-  .family li .mid {
-    font-family: ui-monospace, Consolas, monospace;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--accent-text);
-    min-width: 2em;
-  }
 
   footer.doc {
     margin-top: 72px;
@@ -477,7 +454,7 @@
   <div class="sec-label">Section 3</div>
   <h2>The plan at a glance</h2>
   <p>
-    Sixteen metrics across six families, each reported along <strong>three axes</strong> — distance-range
+    Fifteen metrics across six families, each reported along <strong>three axes</strong> — distance-range
     bins, lanelet <strong>region variants</strong> (whole-scene · road · walkway — the region
     filter in <a href="#filters">Section 5</a>), and the <strong>class taxonomy</strong> (per trained class
     vs behaviour groups — <a href="#taxonomy">Section 6</a>).
@@ -486,61 +463,55 @@
 
   <div class="family-grid">
     <div class="card family">
-      <span class="fam-letter">A</span>
       <h3>True-positive quality</h3>
       <p>When we <em>do</em> detect an object — are the box properties planning consumes correct?</p>
       <ul>
-        <li><span class="mid">A1</span><a href="#m-a1">Corner displacement error</a> <span class="chip det3d">det3d</span></li>
-        <li><span class="mid">A2</span><a href="#m-a2">Heading-flip rate</a> <span class="chip det3d">det3d</span></li>
-        <li><span class="mid">A3</span><a href="#m-a3">Signed nearest-surface error</a> <span class="chip det3d">det3d</span></li>
+        <li><a href="#m-corner-displacement">Corner displacement error</a> <span class="chip det3d">det3d</span></li>
+        <li><a href="#m-heading-flip">Heading-flip rate</a> <span class="chip det3d">det3d</span></li>
+        <li><a href="#m-nearest-surface">Signed nearest-surface error</a> <span class="chip det3d">det3d</span></li>
       </ul>
     </div>
     <div class="card family">
-      <span class="fam-letter">B</span>
       <h3>Criticality-weighted precision &amp; recall</h3>
       <p>Count errors where they matter: on the map, on ego's path, weighted by time-to-collision.</p>
       <ul>
-        <li><span class="mid">B1</span><a href="#m-b1">Critical FP / FN curves</a> <span class="chip det3d">det3d</span></li>
-        <li><span class="mid">B2</span><a href="#m-b2">Collision-risk-weighted mAP</a> <span class="chip det3d">det3d</span></li>
-        <li><span class="mid">B3</span><a href="#m-b3">Occlusion-aware recall split</a> <span class="chip det3d">det3d</span></li>
+        <li><a href="#m-critical-fp-fn">Critical FP / FN curves</a> <span class="chip det3d">det3d</span></li>
+        <li><a href="#m-collision-weighted-map">Collision-risk-weighted mAP</a> <span class="chip det3d">det3d</span></li>
+        <li><a href="#m-occlusion-recall">Occlusion-aware recall split</a> <span class="chip det3d">det3d</span></li>
       </ul>
     </div>
     <div class="card family">
-      <span class="fam-letter">C</span>
       <h3>Temporal stability</h3>
       <p>Downstream tracking lives or dies on frame-to-frame consistency — measure it before the tracker.</p>
       <ul>
-        <li><span class="mid">C1</span><a href="#m-c1">Detection stability per instance</a> <span class="chip det3d">det3d</span></li>
-        <li><span class="mid">C2</span><a href="#m-c2">Consecutive-miss streaks</a> <span class="chip det3d">det3d</span></li>
+        <li><a href="#m-detection-stability">Detection stability per instance</a> <span class="chip det3d">det3d</span></li>
+        <li><a href="#m-miss-streaks">Consecutive-miss streaks</a> <span class="chip det3d">det3d</span></li>
       </ul>
     </div>
     <div class="card family">
-      <span class="fam-letter">D</span>
       <h3>Segmentation quality</h3>
       <p>mIoU hides edge errors on large regions and safety errors on the road itself.</p>
       <ul>
-        <li><span class="mid">D1</span><a href="#m-d1">Error clusters (phantom obstacles)</a> <span class="chip seg3d">seg3d</span></li>
-        <li><span class="mid">D2</span><a href="#m-d2">Small-object partial-detection score</a> <span class="chip">diagnostic</span></li>
-        <li><span class="mid">D3</span><a href="#m-d3">Neighbourhood-tolerant error rate</a> <span class="chip seg3d">seg3d</span></li>
+        <li><a href="#m-error-clusters">Error clusters (phantom obstacles)</a> <span class="chip seg3d">seg3d</span></li>
+        <li><a href="#m-partial-detection">Small-object partial-detection score</a> <span class="chip">diagnostic</span></li>
+        <li><a href="#m-tolerant-error">Neighbourhood-tolerant error rate</a> <span class="chip seg3d">seg3d</span></li>
       </ul>
     </div>
     <div class="card family">
-      <span class="fam-letter">E</span>
       <h3>Uncertainty</h3>
       <p>Is the model's confidence honest, and does its uncertainty flag its own mistakes? Reported
          whole-scene and per lanelet region (road · walkway).</p>
       <ul>
-        <li><span class="mid">E1</span><a href="#m-e1">Calibration error (ECE)</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
-        <li><span class="mid">E2</span><a href="#m-e2">Uncertainty usefulness (entropy AUROC)</a> <span class="chip">diagnostic</span></li>
-        <li><span class="mid">E3</span><a href="#m-e3">Confident-error rate</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
+        <li><a href="#m-calibration">Calibration error (ECE)</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
+        <li><a href="#m-entropy-auroc">Uncertainty usefulness (entropy AUROC)</a> <span class="chip">diagnostic</span></li>
+        <li><a href="#m-confident-error">Confident-error rate</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
       </ul>
     </div>
     <div class="card family">
-      <span class="fam-letter">F</span>
       <h3>Confusion matrices</h3>
       <p>Which classes get mistaken for which — read directly, per class and per behaviour group.</p>
       <ul>
-        <li><span class="mid">F1</span><a href="#m-f1">Class confusion matrix</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
+        <li><a href="#m-confusion-matrix">Class confusion matrix</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
       </ul>
     </div>
   </div>
@@ -565,11 +536,11 @@
         <tr><th>Family</th><th>autoware-ml (offline, GT + map)</th><th>perception_evaluation (offline + online)</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>A</strong> · TP quality</td><td class="yes">✔ primary</td><td class="yes">✔ duplicate, same spec</td></tr>
-        <tr><td><strong>B</strong> · criticality-weighted</td><td class="yes">✔ primary (map ships with dataset; ego reachable set)</td><td class="yes">✔ replay mode + online mode</td></tr>
-        <tr><td><strong>C</strong> · stability</td><td class="yes">✔ via GT instance tokens (no tracker needed)</td><td class="yes">✔ authoritative, on tracker output</td></tr>
-        <tr><td><strong>D</strong> · segmentation</td><td class="yes">✔ primary</td><td class="yes">✔ reproduce the AML suite point metrics, plus runtime-only extras (Section 9)</td></tr>
-        <tr><td><strong>E</strong> · uncertainty</td><td class="yes">✔ primary (seg per-point scores; E1 &amp; E3 also on det3d detection scores)</td><td class="yes">✔ duplicate, same spec</td></tr>
+        <tr><td><strong>True-positive quality</strong></td><td class="yes">✔ primary</td><td class="yes">✔ duplicate, same spec</td></tr>
+        <tr><td><strong>Criticality-weighted</strong></td><td class="yes">✔ primary (map ships with dataset; ego reachable set)</td><td class="yes">✔ replay mode + online mode</td></tr>
+        <tr><td><strong>Temporal stability</strong></td><td class="yes">✔ via GT instance tokens (no tracker needed)</td><td class="yes">✔ authoritative, on tracker output</td></tr>
+        <tr><td><strong>Segmentation quality</strong></td><td class="yes">✔ primary</td><td class="yes">✔ reproduce the AML suite point metrics, plus runtime-only extras (Section 9)</td></tr>
+        <tr><td><strong>Uncertainty</strong></td><td class="yes">✔ primary (seg per-point scores; calibration error &amp; confident-error rate also on det3d detection scores)</td><td class="yes">✔ duplicate, same spec</td></tr>
         <tr><td>Latency, ID switches, rosbag replay</td><td class="no">— not possible (no runtime)</td><td class="yes">✔ only here</td></tr>
       </tbody>
     </table>
@@ -587,7 +558,8 @@
   <div class="sec-label">Section 4</div>
   <h2>One metric core, pluggable inputs</h2>
   <p>
-    Every collision-risk metric in family B answers the same question — <em>“how soon could this object
+    Both collision-risk metrics (the critical FP / FN curves and the collision-risk-weighted mAP) answer
+    the same question — <em>“how soon could this object
     and ego collide?”</em> — with one shared computation: propagate ego and the object forward as
     <strong>reachable sets</strong> and take the first time they overlap. There is a single model — no
     fidelity levels. What is <em>pluggable</em> is only the <strong>input source</strong> behind one
@@ -916,8 +888,9 @@
     (<a href="#core">Section 4</a>): the driver already steered around the hazard the model missed. This is
     the "in ego's path" slice, and like the region filter it composes with <em>any</em> metric, det3d and
     seg3d alike: yaw error for in-path objects, mAP in the corridor, segmentation IoU / error clusters /
-    uncertainty on the road ahead. It is the filter form of the same corridor B1 uses; where B1 is a dedicated
-    critical-FP/FN curve, the corridor <em>filter</em> lets every other metric be reported in-path too.
+    uncertainty on the road ahead. It is the filter form of the same corridor the
+    <a href="#m-critical-fp-fn">critical FP / FN curves</a> use; where those are a dedicated curve, the
+    corridor <em>filter</em> lets every other metric be reported in-path too.
   </p>
   <figure>
     <div class="fig-wrap">
@@ -1099,10 +1072,8 @@
     <strong>“The math”</strong> and <strong>“Implementation notes”</strong> if you build it.
   </p>
 
-  <!-- ================= A1 ================= -->
-  <article class="metric" id="m-a1">
+  <article class="metric" id="m-corner-displacement">
     <div class="metric-head">
-      <span class="metric-id">A1</span>
       <h3>Corner displacement error (combined)</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
     </div>
@@ -1113,7 +1084,8 @@
       3° yaw error on a 20 m truck shifts a corner ~0.5 m, and that shows up here directly, no separate yaw
       statistic needed. Center-distance matching is also blind to footprint inflation — an oversized box
       scores the same as a tight one; corner distance penalizes it. The one thing it deliberately forgives
-      is a 180° heading flip (the outline barely moves) — <a href="#m-a2">A2</a> catches that separately.
+      is a 180° heading flip (the outline barely moves) — the
+      <a href="#m-heading-flip">heading-flip rate</a> catches that separately.
     </p>
     <figure>
       <div class="fig-wrap">
@@ -1152,7 +1124,7 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li>Corner math is shared with A3 and the export-side box utilities — one geometry helper, used by all.</li>
+          <li>Corner math is shared with the signed nearest-surface error and the export-side box utilities — one geometry helper, used by all.</li>
           <li>Matching-mode flag extends the existing center-distance matcher; both modes share the PR-curve machinery.</li>
           <li>APE already supports pluggable matching modes — add corner distance as a fifth mode with identical spec.</li>
         </ul>
@@ -1160,16 +1132,15 @@
     </details>
   </article>
 
-  <!-- ================= A2 ================= -->
-  <article class="metric" id="m-a2">
+  <article class="metric" id="m-heading-flip">
     <div class="metric-head">
-      <span class="metric-id">A2</span>
       <h3>Heading-flip rate</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
     </div>
     <p>
-      A 180° heading flip leaves the box outline almost unchanged, so A1 forgives it — but it inverts the
-      object's velocity direction and is a prime cause of tracking failures. A2 isolates exactly that: any
+      A 180° heading flip leaves the box outline almost unchanged, so
+      <a href="#m-corner-displacement">corner displacement</a> forgives it — but it inverts the object's
+      velocity direction and is a prime cause of tracking failures. This metric isolates exactly that: any
       true positive whose heading error passes a quarter turn counts as one flip — a uniform +1, however far
       past 90°, because a wrong-way heading is wrong-way regardless of degree.
     </p>
@@ -1193,7 +1164,7 @@
         <text x="440" y="98" class="svg-label strong" fill="var(--danger)" text-anchor="middle">→ flip +1</text>
       </svg>
       </div>
-      <figcaption>The reversal A1 cannot see: outline unchanged (corner error ≈ 0) but the heading is
+      <figcaption>The reversal that corner displacement cannot see: outline unchanged (corner error ≈ 0) but the heading is
       inverted — counted here as one flip.</figcaption>
     </figure>
     <details>
@@ -1209,17 +1180,15 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li>Reads <code>orientation_error</code> from the shared match curve — no new matching, pairs with A1.</li>
+          <li>Reads <code>orientation_error</code> from the shared match curve — no new matching, pairs with the corner displacement error.</li>
           <li>Same yaw convention as APH, so the two heading signals stay consistent.</li>
         </ul>
       </div>
     </details>
   </article>
 
-  <!-- ================= A3 ================= -->
-  <article class="metric" id="m-a3">
+  <article class="metric" id="m-nearest-surface">
     <div class="metric-head">
-      <span class="metric-id">A3</span>
       <h3>Signed nearest-surface error</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
     </div>
@@ -1266,17 +1235,15 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li>Reuses A1's corner/outline geometry helper; nearest point on a rectangle is closed-form.</li>
+          <li>Reuses the corner-displacement geometry helper; nearest point on a rectangle is closed-form.</li>
           <li>In APE, align the definition with the existing plane-distance matcher so numbers are mutually interpretable — one shared definition of “near face”.</li>
         </ul>
       </div>
     </details>
   </article>
 
-  <!-- ================= B1 ================= -->
-  <article class="metric" id="m-b1">
+  <article class="metric" id="m-critical-fp-fn">
     <div class="metric-head">
-      <span class="metric-id">B1</span>
       <h3>Critical FP / FN curves (ego corridor)</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
     </div>
@@ -1295,8 +1262,8 @@
       the counts are broken down so the safety-critical classes stand on their own. Matching is
       <em>class-agnostic</em> (nearest box within the threshold, any class), so an object detected as the
       <em>wrong</em> class still counts as detected — it does not become a critical FN. That mislabelling is
-      captured by the <a href="#m-f1">confusion matrix (F1)</a>, not here; B1 answers only "is there a box in
-      the path at all".
+      captured by the <a href="#m-confusion-matrix">confusion matrix</a>, not here; this metric answers only
+      "is there a box in the path at all".
     </p>
     <figure>
       <div class="fig-wrap">
@@ -1386,7 +1353,7 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li>Shares the one reachability engine with B2 — the per-object TTC is computed once per frame and both read it.</li>
+          <li>Shares the one reachability engine with the collision-risk-weighted mAP — the per-object TTC is computed once per frame and both read it.</li>
           <li>In APE online mode ego's future comes from the planned trajectory instead of the reachable set; same code path via the ego-future provider (Section 4).</li>
           <li>Reported per class; pedestrian FN-in-corridor is the headline safety number.</li>
         </ul>
@@ -1394,10 +1361,8 @@
     </details>
   </article>
 
-  <!-- ================= B2 ================= -->
-  <article class="metric" id="m-b2">
+  <article class="metric" id="m-collision-weighted-map">
     <div class="metric-head">
-      <span class="metric-id">B2</span>
       <h3>Collision-risk-weighted mAP</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
     </div>
@@ -1492,7 +1457,7 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li>Shares the one reachability engine with B1 — the per-object TTC is computed once per frame (map
+          <li>Shares the one reachability engine with the critical FP / FN curves — the per-object TTC is computed once per frame (map
               frame, drivable polygon from the lanelet map) and both metrics read it.</li>
           <li>FP weighting propagates the prediction's own state under the same rule — a phantom that could
               reach ego is weighted like a real object there, which is the point (phantom braking).</li>
@@ -1522,10 +1487,8 @@
   </article>
 
 
-  <!-- ================= B3 ================= -->
-  <article class="metric" id="m-b3">
+  <article class="metric" id="m-occlusion-recall">
     <div class="metric-head">
-      <span class="metric-id">B3</span>
       <h3>Occlusion-aware recall split</h3>
       <span class="chip repo-aml">AML</span><span class="chip det3d">det3d</span>
     </div>
@@ -1550,10 +1513,8 @@
     </details>
   </article>
 
-  <!-- ================= C1 ================= -->
-  <article class="metric" id="m-c1">
+  <article class="metric" id="m-detection-stability">
     <div class="metric-head">
-      <span class="metric-id">C1</span>
       <h3>Detection stability per instance</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
     </div>
@@ -1642,10 +1603,8 @@
     </details>
   </article>
 
-  <!-- ================= C2 ================= -->
-  <article class="metric" id="m-c2">
+  <article class="metric" id="m-miss-streaks">
     <div class="metric-head">
-      <span class="metric-id">C2</span>
       <h3>Consecutive-miss streaks</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
     </div>
@@ -1691,7 +1650,7 @@
       <div class="body">
         <div class="formula">streak(instance) = longest run of frames where the GT is inside evaluation coverage but unmatched</div>
         <p>Reported per class: max and p95 streak length (frames and seconds at the annotation frequency),
-        and the rate of streaks ≥ k frames. Combined with B2's corridor: streaks <em>inside the corridor</em>
+        and the rate of streaks ≥ k frames. Combined with the <a href="#filters">corridor filter</a>: streaks <em>inside the corridor</em>
         are the critical subset.</p>
       </div>
     </details>
@@ -1699,7 +1658,7 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li>Same instance-token grouping as C1; one accumulation pass serves both.</li>
+          <li>Same instance-token grouping as the per-instance stability metric; one accumulation pass serves both.</li>
           <li>Coverage check (range cap, min points) must be applied per frame so a departing object does not fake a streak.</li>
         </ul>
       </div>
@@ -1708,10 +1667,8 @@
 
 
 
-  <!-- ================= D1 ================= -->
-  <article class="metric" id="m-d1">
+  <article class="metric" id="m-error-clusters">
     <div class="metric-head">
-      <span class="metric-id">D1</span>
       <h3>Error clusters (phantom obstacles)</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip seg3d">seg3d</span>
     </div>
@@ -1769,24 +1726,22 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li>Clustering runs on error points only (a tiny subset), so cost is negligible; same voxel-hash neighborhood code as D3 (the tolerant error rate).</li>
+          <li>Clustering runs on error points only (a tiny subset), so cost is negligible; same voxel-hash neighborhood code as the neighbourhood-tolerant error rate.</li>
           <li>Per-class breakdown by the points' ground-truth class — consistent with every other per-class point metric (what the misclassified thing really was).</li>
         </ul>
       </div>
     </details>
   </article>
 
-  <!-- ================= D2 ================= -->
-  <article class="metric" id="m-d2">
+  <article class="metric" id="m-partial-detection">
     <div class="metric-head">
-      <span class="metric-id">D2</span>
       <h3>Small-object partial-detection score</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip">diagnostic</span><span class="chip seg3d">seg3d</span>
     </div>
     <p>
       For a pedestrian or a traffic cone, classifying even a handful of points correctly is far better
       than classifying none — downstream logic can still react. mIoU cannot see this: it averages over
-      points and is dominated by large classes. D2 asks, per small object: <em>did we see it at all?</em>
+      points and is dominated by large classes. This metric asks, per small object: <em>did we see it at all?</em>
       The first correct point earns roughly half the credit — existence — and further points saturate toward one.
     </p>
     <figure>
@@ -1852,7 +1807,7 @@
         single most valuable point); each further point adds less; k = n → credit exactly 1. The
         half-saturation constant h is the only parameter (spec-versioned) and sets how strongly the first
         points are rewarded.</p>
-        <p>D3 = mean credit over instances, per class × range bin. Complementary to mIoU, never
+        <p>Partial-detection score = mean credit over instances, per class × range bin. Complementary to mIoU, never
         a replacement for it.</p>
       </div>
     </details>
@@ -1860,7 +1815,7 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li><strong>Diagnostic only, by decision:</strong> D2 rewards partial answers, so it never enters
+          <li><strong>Diagnostic only, by decision:</strong> it rewards partial answers, so it never enters
               release gates or headline suites — it exists to debug small-object recall, not to rank models.</li>
           <li>Detection GT boxes group points into instances (LiDAR seg GT carries no instance IDs);
               target classes: pedestrian, bicycle, motorcycle, traffic cone.</li>
@@ -1870,16 +1825,14 @@
     </details>
   </article>
 
-  <!-- ================= D3 ================= -->
-  <article class="metric" id="m-d3">
+  <article class="metric" id="m-tolerant-error">
     <div class="metric-head">
-      <span class="metric-id">D3</span>
       <h3>Neighbourhood-tolerant error rate</h3>
       <span class="chip repo-aml">AML</span><span class="chip seg3d">seg3d</span>
     </div>
     <p>
       Point-wise GT labels are not pixel-perfect, and for driving it does not matter if a handful of points
-      flip class as long as the right class is present right there. D3 forgives exactly that: a misclassified
+      flip class as long as the right class is present right there. This metric forgives exactly that: a misclassified
       point is <em>not</em> counted as an error if the model predicted its true class on another point within
       a small radius. Only misclassifications with <strong>no correct-class neighbour</strong> — a genuinely
       wrong region, not annotation jitter at a boundary — survive as errors.
@@ -1922,7 +1875,7 @@
         <p>In words: a point is an error only if the model got it wrong <em>and</em> did not predict the
         correct class anywhere within r. At r = 0 this is exactly the ordinary error rate; larger r forgives
         boundary jitter and annotation noise. Reported per region / range like every point metric, and it can
-        feed the D1 cluster count so a tolerated point never seeds a phantom.</p>
+        feed the <a href="#m-error-clusters">error-cluster</a> count so a tolerated point never seeds a phantom.</p>
       </div>
     </details>
     <details>
@@ -1931,7 +1884,7 @@
         <ul>
           <li>Reads the cached per-point coord + pred + target; the neighbour test is one fixed-radius
               <code>cKDTree</code> query over the misclassified points against the points predicting each
-              target class — the same spatial machinery D1 / D2 already use.</li>
+              target class — the same spatial machinery the error-cluster and partial-detection metrics already use.</li>
           <li>r is a spec-versioned parameter; the tolerance is one-sided (it only ever <em>removes</em>
               errors), so the tolerant rate is always ≤ the strict error rate.</li>
         </ul>
@@ -1939,18 +1892,17 @@
     </details>
   </article>
 
-  <!-- ===== Family E: uncertainty ===== -->
+  <!-- ===== uncertainty metrics ===== -->
   <div class="callout">
     <b>Region variants apply here too.</b> Like every metric in this plan, the uncertainty metrics below are
     reported whole-scene and per lanelet region — road, walkway, and both — via the region filter defined in
-    <a href="#filters">Section 5</a>. E3 in particular reads naturally per region (confident errors
+    <a href="#filters">Section 5</a>. The <a href="#m-confident-error">confident-error rate</a> in
+    particular reads naturally per region (confident errors
     <em>on the road</em> versus on the walkway).
   </div>
 
-  <!-- ================= E1 ================= -->
-  <article class="metric" id="m-e1">
+  <article class="metric" id="m-calibration">
     <div class="metric-head">
-      <span class="metric-id">E1</span>
       <h3>Calibration error (ECE)</h3>
       <span class="chip repo-aml">AML</span><span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span>
     </div>
@@ -2007,17 +1959,15 @@
     </details>
   </article>
 
-  <!-- ================= E2 ================= -->
-  <article class="metric" id="m-e2">
+  <article class="metric" id="m-entropy-auroc">
     <div class="metric-head">
-      <span class="metric-id">E2</span>
       <h3>Uncertainty usefulness (entropy AUROC)</h3>
       <span class="chip repo-aml">AML</span><span class="chip">diagnostic</span><span class="chip seg3d">seg3d</span>
     </div>
     <p>
       Uncertainty is only worth anything if it flags the model's <em>own</em> mistakes — then downstream can
       hesitate where the model is unsure. This checks whether per-point entropy actually separates correct
-      points from wrong ones. A model with great mIoU but random entropy is silently unsafe; E2 catches that.
+      points from wrong ones. A model with great mIoU but random entropy is silently unsafe; this metric catches that.
     </p>
     <figure>
       <div class="fig-wrap">
@@ -2068,25 +2018,23 @@
     </details>
   </article>
 
-  <!-- ================= E3 ================= -->
-  <article class="metric" id="m-e3">
+  <article class="metric" id="m-confident-error">
     <div class="metric-head">
-      <span class="metric-id">E3</span>
       <h3>Confident-error rate</h3>
       <span class="chip repo-aml">AML</span><span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span>
     </div>
     <p>
       The sharpest driving-relevant one, on both tasks: of the errors the model makes, what fraction did it
       make at <em>high confidence</em>? A mistake the model is unsure about is recoverable; a confident one
-      triggers a hard brake. E3 splits errors into hesitant versus confident — the confident ones are the
+      triggers a hard brake. It splits errors into hesitant versus confident — the confident ones are the
       release blockers. In <b>seg3d</b> an error is a point whose class is wrong and confidence is
-      1 − entropy (it composes with <a href="#m-d1">D1</a>'s error extraction); in <b>det3d</b> an error is a
+      1 − entropy (it composes with the <a href="#m-error-clusters">error-cluster</a> point extraction); in <b>det3d</b> an error is a
       <em>false-positive box</em> and confidence is the detection score — the confident phantom detection.
     </p>
     <figure>
       <div class="fig-wrap">
       <svg viewBox="0 0 420 280" width="420" height="280" role="img" aria-labelledby="fig-e3-title">
-        <title id="fig-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one E3 measures.</title>
+        <title id="fig-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one this metric measures.</title>
         <line x1="60" y1="30" x2="60" y2="230" stroke="var(--line)" stroke-width="1.5"/>
         <line x1="60" y1="230" x2="380" y2="230" stroke="var(--line)" stroke-width="1.5"/>
         <rect x="60" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
@@ -2097,22 +2045,22 @@
         <text x="300" y="185" class="svg-label small" text-anchor="middle">confident &amp; correct</text>
         <text x="140" y="85" class="svg-label small" text-anchor="middle">uncertain &amp; wrong</text>
         <text x="300" y="80" class="svg-label strong" text-anchor="middle" fill="var(--danger)">confident</text>
-        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">&amp; wrong → E3</text>
+        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">&amp; wrong</text>
         <text x="220" y="256" class="svg-label" text-anchor="middle">confidence →</text>
         <text x="26" y="130" class="svg-label" text-anchor="middle" transform="rotate(-90 26 130)">wrong ← → correct</text>
       </svg>
       </div>
-      <figcaption>The same two-by-two on both tasks: E3 is the fraction of errors in the confident-and-wrong
+      <figcaption>The same two-by-two on both tasks: the confident-error rate is the fraction of errors in the confident-and-wrong
       quadrant — a confident phantom point (seg3d) or a confident false-positive box (det3d).</figcaption>
     </figure>
     <details>
       <summary>The math</summary>
       <div class="body">
-        <div class="formula">seg3d: &nbsp; E3 = #(misclassified points with entropy H &lt; τ) / #(misclassified points)<br>det3d: &nbsp; E3 = #(false positives with score ≥ τ_high) / #(false positives) , &nbsp; τ / τ_high spec-versioned</div>
+        <div class="formula">seg3d: &nbsp; rate = #(misclassified points with entropy H &lt; τ) / #(misclassified points)<br>det3d: &nbsp; rate = #(false positives with score ≥ τ_high) / #(false positives) , &nbsp; τ / τ_high spec-versioned</div>
         <p>The area comes from the attached region / corridor filter (road / walkway / whole-scene),
         per range bin. det3d is <strong>false-positive only</strong>: a false negative carries no prediction
         and therefore no confidence, so it cannot be confident or hesitant — the missed-object (safety) axis
-        is <a href="#m-b1">B1</a>'s critical-FN. On the road / corridor slice a confident error is exactly
+        is the <a href="#m-critical-fp-fn">critical-FN curve</a>. On the road / corridor slice a confident error is exactly
         the confident phantom that triggers a hard brake.</p>
       </div>
     </details>
@@ -2120,18 +2068,16 @@
       <summary>Implementation notes</summary>
       <div class="body">
         <ul>
-          <li>seg3d: shares D1's error-point extraction and the region masks; only adds the confidence threshold split. Read together with D1.</li>
-          <li>det3d: reads the score of each unmatched prediction (false positive) already produced by the matcher; no new state. Read together with B1.</li>
+          <li>seg3d: shares the error-point extraction and region masks of the error-cluster metric; only adds the confidence-threshold split. Read the two together.</li>
+          <li>det3d: reads the score of each unmatched prediction (false positive) already produced by the matcher; no new state. Read together with the critical FP / FN curves.</li>
           <li>Confident errors are the release-blocking subset of the error set on either task.</li>
         </ul>
       </div>
     </details>
   </article>
 
-  <!-- ================= F1 ================= -->
-  <article class="metric" id="m-f1">
+  <article class="metric" id="m-confusion-matrix">
     <div class="metric-head">
-      <span class="metric-id">F1</span>
       <h3>Class confusion matrix</h3>
       <span class="chip repo-aml">AML</span><span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span>
     </div>
@@ -2150,8 +2096,8 @@
       paired to ground truth by <strong>class-agnostic greedy center-distance matching</strong> at a fixed
       threshold (2 m); each matched pair contributes to <code>confusion[true, pred]</code>. It is the
       label-confusion view among detections that <em>did</em> match — unmatched predictions (false
-      positives) and unmatched ground truth (misses) are left to <a href="#m-b1">B1</a> and are not in this
-      matrix.
+      positives) and unmatched ground truth (misses) are left to the
+      <a href="#m-critical-fp-fn">critical FP / FN curves</a> and are not in this matrix.
     </p>
     <details>
       <summary>The math &amp; slices</summary>
@@ -2196,10 +2142,12 @@
       <tbody>
         <tr>
           <td><code>Detection3DMetricSuite</code></td>
-          <td>Raw per-frame boxes (predictions + filtered GT). B1 / B2 read the same per-frame samples
-              plus the per-box reachability TTC the suite's collision provider computed at update (no corridor
-              filter — B1 gates on finite TTC, B2 weights by it); no scene grouping or recorded trajectory</td>
-          <td>mAP · APH · NDS · TP errors · A1–A3 · B1 · B2 · E1 · E3</td>
+          <td>Raw per-frame boxes (predictions + filtered GT). The collision-risk metrics read the same
+              per-frame samples plus the per-box reachability TTC the suite's collision provider computed at
+              update (no corridor filter — the critical FP / FN curves gate on finite TTC, the weighted mAP
+              weights by it); no scene grouping or recorded trajectory</td>
+          <td>mAP · APH · NDS · TP errors · corner displacement · heading flips · nearest-surface error ·
+              critical FP / FN · collision-risk-weighted mAP · calibration error · confident-error rate</td>
         </tr>
         <tr>
           <td><code>Segmentation3DConfusionMatrixMetricSuite</code></td>
@@ -2212,7 +2160,8 @@
           <td><code>Segmentation3DPointCloudMetricSuite</code></td>
           <td>Raw per-frame point cache (coord, labels, per-class scores) — the spatial / uncertainty
               metrics need what a confusion matrix has discarded; too heavy for every val epoch</td>
-          <td>D1 · D2 · D3 · E1 · E2 · E3</td>
+          <td>error clusters · partial detection · tolerant error rate · calibration error ·
+              entropy AUROC · confident-error rate</td>
         </tr>
       </tbody>
     </table>
@@ -2230,12 +2179,12 @@
     A model's <code>build_eval_output</code> produces one flat dict per batch; each suite declares the keys
     it needs and fails loud at the first batch when one is missing. Detection is per-frame lists:
   </p>
-  <div class="formula">predictions: [{bboxes_3d, scores_3d, labels_3d}] · gt_boxes · gt_labels · gt_num_points<br>+ ego2global · scene_token &nbsp;(region &amp; corridor filters — B1 / B2 run per-frame in the corridor)</div>
+  <div class="formula">predictions: [{bboxes_3d, scores_3d, labels_3d}] · gt_boxes · gt_labels · gt_num_points<br>+ ego2global · scene_token &nbsp;(region &amp; corridor filters — the collision-risk metrics run per-frame in the corridor)</div>
   <p>
     Segmentation uses one contract for <em>both</em> suites — <code>seg_frames</code>, a list with one entry
     per frame:
   </p>
-  <div class="formula">seg_frames: [ { coord (N×3) · pred (N) · target (N) · scores (N×C)<br>&nbsp;&nbsp;[ · ego2global · scene_token — region &amp; corridor filters ]<br>&nbsp;&nbsp;[ · gt_boxes · gt_box_labels — D2 partial detection ] } , … ]</div>
+  <div class="formula">seg_frames: [ { coord (N×3) · pred (N) · target (N) · scores (N×C)<br>&nbsp;&nbsp;[ · ego2global · scene_token — region &amp; corridor filters ]<br>&nbsp;&nbsp;[ · gt_boxes · gt_box_labels — partial detection ] } , … ]</div>
   <p>
     The bracketed metadata is copied through when the dataset supplies it; a configured filter or metric
     that needs a missing key raises naming it — absence is never silent. For T4, <code>scene_token</code>
@@ -2317,9 +2266,10 @@
     <div class="card">
       <h3>1 · Reproduce the offline suite</h3>
       <p>Implement the autoware-ml segmentation metrics — per-class IoU / mIoU, accuracy,
-      precision / recall / F1 — plus <a href="#m-d1">D1</a>, <a href="#m-d3">D3</a> and the
-      Family&nbsp;E uncertainty metrics (<a href="#m-e1">E1</a>–<a href="#m-e3">E3</a>) with their region
-      variants, all from the same versioned spec, evaluated in replay against annotated datasets.</p>
+      precision / recall / F1 — plus <a href="#m-error-clusters">error clusters</a>, the
+      <a href="#m-tolerant-error">neighbourhood-tolerant error rate</a> and the uncertainty metrics
+      (<a href="#m-calibration">calibration error</a>, <a href="#m-entropy-auroc">entropy AUROC</a>,
+      <a href="#m-confident-error">confident-error rate</a>) with their region variants, all from the same versioned spec, evaluated in replay against annotated datasets.</p>
     </div>
     <div class="card">
       <h3>2 · Exploit the runtime</h3>
@@ -2392,8 +2342,8 @@
     Two levels, so a report can tag <em>every single number</em> with the exact definition that produced
     it. A <strong>per-metric version</strong> travels with each value; a <strong>bundle version</strong>
     names the whole set the run was computed against. Metrics are keyed by their <strong>plain name</strong> everywhere
-    (<code>corner_error</code>, <code>collision_weighted_map</code>, …). The catalog ids (A1, B2, …) exist
-    only in this proposal as cross-references; they are <b>never</b> emitted by a suite or shown in a report.
+    (<code>corner_error</code>, <code>collision_weighted_map</code>, …) — the same name in this catalog, in a
+    suite's output and in a report, with no short-code scheme in between to translate.
   </p>
   <div class="formula">per-metric: &nbsp; &lt;metric-name&gt;@v&lt;MAJOR&gt;.&lt;MINOR&gt; &nbsp;&nbsp; e.g. <b>corner_error@v1.0</b> · <b>collision_weighted_map@v1.2</b> · <b>error_clusters@v2.0</b><br>bundle: &nbsp;&nbsp;&nbsp;&nbsp; metric-spec &lt;MAJOR&gt;.&lt;MINOR&gt;.&lt;PATCH&gt; &nbsp;&nbsp; e.g. <b>metric-spec 1.4.0</b></div>
   <div class="table-wrap">
@@ -2505,16 +2455,16 @@
         <tr><th>Input</th><th>Needed by</th><th>Availability (per dataset)</th></tr>
       </thead>
       <tbody>
-        <tr><td>Ego pose per frame + lane speed limit</td><td>Region &amp; corridor filters (frame transform), B1, B2 (reachable set / TTC)</td><td class="yes">Any T4 dataset for <code>ego2global</code>; the ego reachable set needs the current ego state + the lane speed limit (gen2 map), no tracker and no recorded future</td></tr>
-        <tr><td>GT boxes + <code>num_lidar_pts</code> + valid flag</td><td>mAP / APH / NDS / TP errors, A1–A3, B1, and the min-points filter</td><td class="yes">Det3D T4Dataset — box columns and point counts come from t4_devkit; <code>num_lidar_pts</code> drives the min-points filter and the validity flag</td></tr>
-        <tr><td>Friction-limited turn radius (R = v²/a<sub>lat</sub>), per-class VRU run speeds, off-map fallback speed</td><td>B1 / B2 reachability engine</td><td class="yes">Spec constants, not dataset fields — the wheeled max speed itself comes from the lanelet <code>speed_limit</code> (row above); reachability is deliberately independent of any observed velocity, so no per-object GT velocity is required</td></tr>
-        <tr><td>Lanelet map — road / walkway / crosswalk polygons + speed limits (<code>map/lanelet2_map.osm</code>, local coords)</td><td>Region filter (Section 5) — every det3d + seg3d road / walkway slice; the ego reachable set (lane speed limit) for B1 / B2</td><td>gen2 DBs only — older DBs (db_j6_v3/v5, db_largebus_v1, …) ship no <code>map/</code>; the region slice is declared per dataset and fails loud where the map is absent</td></tr>
-        <tr><td>Per-point semantic labels (real lidarseg)</td><td>All seg3d metrics (IoU / acc / PRF1, D1–D3, E1–E3)</td><td>Seg3D T4Dataset — a det3d dataset with <b>pseudo-labelled</b> point masks, or a dataset carrying real per-frame detection <em>and</em> segmentation together (the segdet path accepts both when present)</td></tr>
-        <tr><td>Per-point softmax scores (test point-cache)</td><td>E1, E2, E3</td><td class="yes">Produced at test on any seg3d evaluation — a model output, the cache's reason for storing scores</td></tr>
-        <tr><td>GT detection boxes <em>and</em> point labels on the same frame</td><td>D2 small-object partial-detection score</td><td>A dataset (or the segdet pipeline) that provides detection boxes and point labels together for the same frame</td></tr>
-        <tr><td>Stable GT instance token across frames</td><td>C1, C2 (per-instance stability &amp; miss streaks)</td><td class="no">Present in the T4 <em>database</em> layer (<code>box3d_instance_id</code>, stable across a scene) but <b>dropped from the training / eval info pkl</b> and unused by any loader — surfacing it needs an info regeneration</td></tr>
-        <tr><td>Tracker output</td><td>C1 / C2 runtime variants, CLEAR</td><td>perception_evaluation only</td></tr>
-        <tr><td>Planned trajectory / latency measurements</td><td>B-online, latency reporting</td><td>perception_evaluation only</td></tr>
+        <tr><td>Ego pose per frame + lane speed limit</td><td>Region &amp; corridor filters (frame transform), the collision-risk metrics (reachable set / TTC)</td><td class="yes">Any T4 dataset for <code>ego2global</code>; the ego reachable set needs the current ego state + the lane speed limit (gen2 map), no tracker and no recorded future</td></tr>
+        <tr><td>GT boxes + <code>num_lidar_pts</code> + valid flag</td><td>mAP / APH / NDS / TP errors, the true-positive quality metrics, critical FP / FN, and the min-points filter</td><td class="yes">Det3D T4Dataset — box columns and point counts come from t4_devkit; <code>num_lidar_pts</code> drives the min-points filter and the validity flag</td></tr>
+        <tr><td>Friction-limited turn radius (R = v²/a<sub>lat</sub>), per-class VRU run speeds, off-map fallback speed</td><td>The reachability engine behind the collision-risk metrics</td><td class="yes">Spec constants, not dataset fields — the wheeled max speed itself comes from the lanelet <code>speed_limit</code> (row above); reachability is deliberately independent of any observed velocity, so no per-object GT velocity is required</td></tr>
+        <tr><td>Lanelet map — road / walkway / crosswalk polygons + speed limits (<code>map/lanelet2_map.osm</code>, local coords)</td><td>Region filter (Section 5) — every det3d + seg3d road / walkway slice; the ego reachable set (lane speed limit) for the collision-risk metrics</td><td>gen2 DBs only — older DBs (db_j6_v3/v5, db_largebus_v1, …) ship no <code>map/</code>; the region slice is declared per dataset and fails loud where the map is absent</td></tr>
+        <tr><td>Per-point semantic labels (real lidarseg)</td><td>All seg3d metrics (IoU / acc / PRF1, the segmentation-quality and uncertainty families)</td><td>Seg3D T4Dataset — a det3d dataset with <b>pseudo-labelled</b> point masks, or a dataset carrying real per-frame detection <em>and</em> segmentation together (the segdet path accepts both when present)</td></tr>
+        <tr><td>Per-point softmax scores (test point-cache)</td><td>All three uncertainty metrics</td><td class="yes">Produced at test on any seg3d evaluation — a model output, the cache's reason for storing scores</td></tr>
+        <tr><td>GT detection boxes <em>and</em> point labels on the same frame</td><td>Small-object partial-detection score</td><td>A dataset (or the segdet pipeline) that provides detection boxes and point labels together for the same frame</td></tr>
+        <tr><td>Stable GT instance token across frames</td><td>Per-instance stability &amp; consecutive-miss streaks</td><td class="no">Present in the T4 <em>database</em> layer (<code>box3d_instance_id</code>, stable across a scene) but <b>dropped from the training / eval info pkl</b> and unused by any loader — surfacing it needs an info regeneration</td></tr>
+        <tr><td>Tracker output</td><td>Runtime stability variants, CLEAR</td><td>perception_evaluation only</td></tr>
+        <tr><td>Planned trajectory / latency measurements</td><td>Online criticality metrics, latency reporting</td><td>perception_evaluation only</td></tr>
       </tbody>
     </table>
   </div>
@@ -2536,16 +2486,19 @@
       <tbody>
         <tr>
           <td><strong>1</strong></td>
-          <td><b>All current metrics.</b> det3d: mAP · mAPH · NDS · TP errors · A1 · A2 · A3 · B1 · B2 ·
-              E1 · E3. seg3d: IoU · accuracy · PRF1 · D1 · D2 · D3 · E1 · E2 · E3. Plus the region &amp;
-              corridor filters. B1 / B2 use the one reachability model (Section 4).</td>
-          <td class="yes">Runs on the current test data. (D2 partial-detection needs a det3d + seg3d test
+          <td><b>All current metrics.</b> det3d: mAP · mAPH · NDS · TP errors · corner displacement ·
+              heading flips · nearest-surface error · critical FP / FN · collision-risk-weighted mAP ·
+              calibration error · confident-error rate. seg3d: IoU · accuracy · PRF1 · error clusters ·
+              partial detection · tolerant error rate · calibration error · entropy AUROC ·
+              confident-error rate. Plus the region &amp; corridor filters. The collision-risk metrics use
+              the one reachability model (Section 4).</td>
+          <td class="yes">Runs on the current test data. (Partial detection needs a det3d + seg3d test
               set; everything else is live.)</td>
           <td><span class="chip repo-aml">AML</span></td>
         </tr>
         <tr>
           <td><strong>2</strong></td>
-          <td>C1 · C2 — per-instance stability &amp; consecutive-miss streaks.</td>
+          <td>Per-instance stability &amp; consecutive-miss streaks.</td>
           <td><b>A continuous stream.</b> Following one object frame to frame needs the stable instance token
               surfaced from the T4 database (<code>box3d_instance_id</code>) into the info pkl (a regeneration)
               + scene-grouped per-instance state.</td>
