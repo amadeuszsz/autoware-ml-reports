@@ -2302,6 +2302,11 @@ const CM_TEXT_EPS = 0.005;   // smaller than this and the cell counts as unchang
 // Once a change is worth showing at all it starts here on the colour ramp, so the
 // smallest reported change is still legible; magnitude orders everything above it.
 const CM_RAMP_FLOOR = 0.35;
+// A cell that barely moved still gets a neutral tint keyed to how much mass it
+// holds — the same ramp Current draws, in grey instead of blue — so switching modes
+// never makes it look like cells disappeared. Held below Current's intensity so the
+// cells that actually moved stay the thing your eye lands on.
+const CM_NEUTRAL_WEIGHT = 0.55;
 function confusionClasses(task) {
   // {key, label} per class in the active taxonomy (det uses bare keys, seg [key,label]).
   return task === "det3d"
@@ -2330,6 +2335,12 @@ function fmtShare(v) {
 }
 function fmtDelta(d) {
   return (d > 0 ? "+" : "\u2212") + Math.abs(d).toFixed(2).replace(/^0/, "");
+}
+// Percentage points, for the tooltip: a cell too small to label still reports its
+// exact move on hover rather than rounding away to "-.00".
+function fmtDeltaPP(d) {
+  const pp = d * 100;
+  return (pp > 0 ? "+" : pp < 0 ? "\u2212" : "\u00b1") + Math.abs(pp).toFixed(2) + " pp";
 }
 
 function renderConfusion(task) {
@@ -2398,11 +2409,20 @@ function renderConfusion(task) {
         const better = i === j ? delta > 0 : delta < 0;
         const mag = delta === null ? 0 : Math.min(1, Math.abs(delta) / diffScale);
         const changed = delta !== null && Math.abs(delta) >= CM_TEXT_EPS;
+        // "Present" = a class pair that actually occurs in at least one of the two
+        // releases, as opposed to a pair that never happens or a row one release
+        // never scored. Those stay blank; these stay visible.
+        const present = delta !== null && (cur.norm[i][j] > 0 || prev.norm[i][j] > 0);
         strong = mag > 0.5;
-        fill = changed
-          ? `color-mix(in oklab, var(${better ? "--good" : "--danger"}) ${Math.round((CM_RAMP_FLOOR + (1 - CM_RAMP_FLOOR) * mag) * 100)}%, var(--surface))`
-          : "var(--surface)";
-        if (changed) valueText = fmtDelta(delta);
+        if (changed) {
+          fill = `color-mix(in oklab, var(${better ? "--good" : "--danger"}) ${Math.round((CM_RAMP_FLOOR + (1 - CM_RAMP_FLOOR) * mag) * 100)}%, var(--surface))`;
+          valueText = fmtDelta(delta);
+        } else {
+          const share = present ? Math.max(cur.norm[i][j] || 0, prev.norm[i][j] || 0) : 0;
+          fill = share > 0
+            ? `color-mix(in oklab, var(--muted) ${Math.round(share * CM_NEUTRAL_WEIGHT * 100)}%, var(--surface))`
+            : "var(--surface)";
+        }
       } else {
         strong = norm > 0.5;
         fill = `color-mix(in oklab, var(--series-1) ${Math.round(norm * 100)}%, var(--surface))`;
@@ -2422,7 +2442,7 @@ function renderConfusion(task) {
       const tip = diffMode
         ? (delta === null
             ? "not comparable — one release has no data for this row"
-            : `${fmtShare(prev.norm[i][j])} → ${fmtShare(cur.norm[i][j])}  ·  ${fmtDelta(delta)}`)
+            : `${fmtShare(prev.norm[i][j])} → ${fmtShare(cur.norm[i][j])}  ·  ${fmtDeltaPP(delta)}`)
         : `${(norm * 100).toFixed(1)}%  ·  ${fmtValue(cnt)}`;
       hit.addEventListener("pointerenter", (e) => showTooltip(e, tip, label));
       hit.addEventListener("pointermove", moveTooltip);
@@ -2452,10 +2472,12 @@ function renderConfusion(task) {
     legend.append(
       "Change in each cell's row share from ", word(earlier.name), " to ", word(newest.name), ". ",
       word("green", "var(--good)"), " = better (more weight on the diagonal, less on a swap), ",
-      word("red", "var(--danger)"), " = worse. ",
-      `Full colour at \u00b1${diffScale.toFixed(3)}; `,
-      `a move under \u00b1${CM_TEXT_EPS} counts as unchanged and stays blank, as does a row `,
-      "either release left empty.",
+      word("red", "var(--danger)"), " = worse, ",
+      word("grey"), ` = the pair still occurs but moved less than \u00b1${CM_TEXT_EPS}, shaded by how `,
+      "much of the row it holds, exactly as Current shades it. ",
+      `Full colour at \u00b1${diffScale.toFixed(3)}. `,
+      "Blank means there is nothing to compare: a pair neither release produces, or a row one of them left empty. ",
+      "Hover any cell for both shares and the exact change.",
     );
     host.appendChild(legend);
   }
