@@ -196,6 +196,19 @@
   .testset-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
   .topbar .hint { font-size: 0.76rem; color: var(--muted); }
 
+  /* Charts-only: strip the teaching material and leave the numbers. Everything
+     hidden here is prose or a hand-drawn diagram — no chart, table, tile, config
+     chip or control is touched, so the reading is identical in both views. */
+  body.charts-only .standfirst,
+  body.charts-only #reading,
+  body.charts-only main > section > p,
+  body.charts-only .metric > p,
+  body.charts-only .metric > figure,
+  body.charts-only .metric > details,
+  body.charts-only .topbar .hint { display: none; }
+  body.charts-only .metric { padding: 14px 22px; }
+  body.charts-only .metric-head { margin-bottom: 10px; }
+
   /* test-set info */
   .ts-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
   .ts-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); }
@@ -335,6 +348,11 @@
       <span class="tab-label">Taxonomy</span>
       <div class="seg-control" id="taxonomy-tabs" role="group" aria-label="Class taxonomy"></div>
       <span class="hint">Per class scores every trained class; behaviour groups fold classes whose confusion does not change how the vehicle drives (a bus read as a truck is correct).</span>
+    </div>
+    <div class="topbar-row">
+      <span class="tab-label">Detail</span>
+      <div class="seg-control" id="detail-tabs" role="group" aria-label="Level of detail"></div>
+      <span class="hint">Charts only drops the explanations and diagrams and leaves every chart, table and config chip in place — the numbers do not change.</span>
     </div>
   </div>
 </div>
@@ -2282,6 +2300,35 @@ function renderChart(spec) {
   host.appendChild(wrap);
 }
 
+/* ---------------- level of detail ----------------
+   A pure CSS switch: the charts are rendered either way, so flipping this never
+   re-renders anything and never touches which numbers are on screen. */
+let currentDetail = "full";
+const DETAIL_LEVELS = [
+  { id: "full", label: "Full" },
+  { id: "charts", label: "Charts only" },
+];
+function applyDetail() {
+  document.body.classList.toggle("charts-only", currentDetail === "charts");
+}
+function buildDetailTabs() {
+  const host = document.getElementById("detail-tabs");
+  if (!host) return;
+  host.textContent = "";
+  for (const d of DETAIL_LEVELS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = d.label;
+    btn.setAttribute("aria-pressed", d.id === currentDetail ? "true" : "false");
+    btn.addEventListener("click", () => {
+      currentDetail = d.id;
+      applyDetail();
+      buildDetailTabs();
+    });
+    host.appendChild(btn);
+  }
+}
+
 /* ---------------- confusion matrix heatmap ---------------- */
 let currentConfusionSlice = "whole";
 let currentConfusionView = "current";
@@ -3085,6 +3132,8 @@ buildTestSetTabs();
 buildRangeTabs();
 buildTaxonomyTabs();
 buildConfusionSliceTabs();
+buildDetailTabs();
+applyDetail();
 wireAppendixSearch("det-appendix", "det-search", "det-count");
 wireAppendixSearch("seg-appendix", "seg-search", "seg-count");
 render();
