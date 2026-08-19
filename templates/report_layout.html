@@ -2468,12 +2468,9 @@ function renderConfusion(task) {
     };
     legend.append(
       "Change in each cell's row share from ", word(earlier.name), " to ", word(newest.name), ". ",
-      word("green", "var(--good)"), " = better (more weight on the diagonal, less on a swap), ",
+      word("green", "var(--good)"), " = better, ",
       word("red", "var(--danger)"), " = worse, ",
-      word("grey"), ` = the pair still occurs but moved less than \u00b1${CM_TEXT_EPS}. `,
-      `Full colour at \u00b1${diffScale.toFixed(3)}. `,
-      "Blank means there is nothing to compare: a pair neither release produces, or a row one of them left empty. ",
-      "Hover any cell for both shares and the exact change.",
+      word("grey"), " = no significant change.",
     );
     host.appendChild(legend);
   }
