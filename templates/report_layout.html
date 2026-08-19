@@ -2403,21 +2403,20 @@ function renderConfusion(task) {
       const total = rowTotals[i];
       const norm = (typeof count === "number" && total > 0) ? count / total : 0;
       const delta = deltaAt(i, j);
-      let fill, valueText = "", strong;
+      let fill, valueText = "", strong = false;
       if (diffMode) {
-        // On the diagonal more is better; every off-diagonal cell is a swap, so less is.
-        const better = i === j ? delta > 0 : delta < 0;
-        const mag = delta === null ? 0 : Math.min(1, Math.abs(delta) / diffScale);
-        const changed = delta !== null && Math.abs(delta) >= CM_TEXT_EPS;
-        // "Present" = a class pair that actually occurs in at least one of the two
-        // releases, as opposed to a pair that never happens or a row one release
-        // never scored. Those stay blank; these stay visible.
-        const present = delta !== null && (cur.norm[i][j] > 0 || prev.norm[i][j] > 0);
-        strong = mag > 0.5;
-        if (changed) {
+        if (delta !== null && Math.abs(delta) >= CM_TEXT_EPS) {
+          // On the diagonal more is better; every off-diagonal cell is a swap, so less is.
+          const better = i === j ? delta > 0 : delta < 0;
+          const mag = Math.min(1, Math.abs(delta) / diffScale);
+          strong = mag > 0.5;
           fill = `color-mix(in oklab, var(${better ? "--good" : "--danger"}) ${Math.round((CM_RAMP_FLOOR + (1 - CM_RAMP_FLOOR) * mag) * 100)}%, var(--surface))`;
           valueText = fmtDelta(delta);
         } else {
+          // One flat grey for a pair that occurs in at least one release but did not
+          // move; blank for a pair that never happens, and for a row one release never
+          // scored. Nothing here scales — no value is drawn, so no contrast to pick.
+          const present = delta !== null && (cur.norm[i][j] > 0 || prev.norm[i][j] > 0);
           fill = present ? CM_NEUTRAL_FILL : "var(--surface)";
         }
       } else {
