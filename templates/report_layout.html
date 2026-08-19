@@ -2302,11 +2302,12 @@ const CM_TEXT_EPS = 0.005;   // smaller than this and the cell counts as unchang
 // Once a change is worth showing at all it starts here on the colour ramp, so the
 // smallest reported change is still legible; magnitude orders everything above it.
 const CM_RAMP_FLOOR = 0.35;
-// A cell that barely moved still gets a neutral tint keyed to how much mass it
-// holds — the same ramp Current draws, in grey instead of blue — so switching modes
-// never makes it look like cells disappeared. Held below Current's intensity so the
-// cells that actually moved stay the thing your eye lands on.
-const CM_NEUTRAL_WEIGHT = 0.55;
+// An unchanged cell is tinted inside a narrow grey band rather than along a full
+// ramp: the floor keeps a small share from fading into the background, the ceiling
+// keeps a dominant one (an unmoved diagonal) from out-shouting the cells that did
+// move. Share still orders the cells within the band, it just cannot run away.
+const CM_NEUTRAL_MIN = 0.22;
+const CM_NEUTRAL_MAX = 0.40;
 function confusionClasses(task) {
   // {key, label} per class in the active taxonomy (det uses bare keys, seg [key,label]).
   return task === "det3d"
@@ -2419,8 +2420,9 @@ function renderConfusion(task) {
           valueText = fmtDelta(delta);
         } else {
           const share = present ? Math.max(cur.norm[i][j] || 0, prev.norm[i][j] || 0) : 0;
+          const tint = CM_NEUTRAL_MIN + (CM_NEUTRAL_MAX - CM_NEUTRAL_MIN) * Math.min(1, share);
           fill = share > 0
-            ? `color-mix(in oklab, var(--muted) ${Math.round(share * CM_NEUTRAL_WEIGHT * 100)}%, var(--surface))`
+            ? `color-mix(in oklab, var(--muted) ${Math.round(tint * 100)}%, var(--surface))`
             : "var(--surface)";
         }
       } else {
@@ -2473,8 +2475,8 @@ function renderConfusion(task) {
       "Change in each cell's row share from ", word(earlier.name), " to ", word(newest.name), ". ",
       word("green", "var(--good)"), " = better (more weight on the diagonal, less on a swap), ",
       word("red", "var(--danger)"), " = worse, ",
-      word("grey"), ` = the pair still occurs but moved less than \u00b1${CM_TEXT_EPS}, shaded by how `,
-      "much of the row it holds, exactly as Current shades it. ",
+      word("grey"), ` = the pair still occurs but moved less than \u00b1${CM_TEXT_EPS}, `,
+      "shaded lightly by how much of the row it holds. ",
       `Full colour at \u00b1${diffScale.toFixed(3)}. `,
       "Blank means there is nothing to compare: a pair neither release produces, or a row one of them left empty. ",
       "Hover any cell for both shares and the exact change.",
