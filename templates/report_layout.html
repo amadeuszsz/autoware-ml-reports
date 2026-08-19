@@ -238,7 +238,9 @@
   .cm-label.true { font-weight: 600; fill: var(--ink); }
   .cm-val { font-family: system-ui, sans-serif; font-size: 9px; }
   .cm-hit { fill: transparent; cursor: default; }
-  .cm-slice { margin: 6px 0 10px; }
+  .cm-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 10px; }
+  .cm-legend { margin: 10px 2px 0; font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+  .cm-legend b { color: var(--ink2); font-weight: 600; }
   .slot-note { color: var(--muted); font-size: 0.88rem; padding: 18px 8px; text-align: center; font-style: italic; }
   .bar-hit { fill: transparent; cursor: default; }
   .bar-hit:hover + .bar-mark, .bar-mark.hover { filter: brightness(1.12); }
@@ -1369,9 +1371,14 @@
       off-diagonal cell is a specific swap. Cells are row-normalized (of all matched true-class objects, the
       fraction called each class); hover for the raw count. Follows the range and taxonomy tabs, so the
       grouped taxonomy collapses intra-group swaps onto the diagonal. Misses and false positives are not
-      here — they are the critical-FP/FN metric.
+      here — they are the critical-FP/FN metric. With more than one release on the test set, <b>Δ vs
+      previous</b> swaps the cell values for the change since the previous release, coloured green where the
+      model improved and red where it regressed.
     </p>
-    <div class="seg-control cm-slice" id="det-confusion-slice" role="group" aria-label="Confusion slice"></div>
+    <div class="cm-controls">
+      <div class="seg-control" id="det-confusion-slice" role="group" aria-label="Confusion slice"></div>
+      <div class="seg-control" id="det-confusion-mode" role="group" aria-label="Confusion view"></div>
+    </div>
     <div class="chart-card"><div data-confusion="det3d"></div></div>
   </article>
 </section>
@@ -1710,8 +1717,13 @@
       Point-level: of all points truly of each class (rows), what fraction did the model predict as each
       class (columns)? The diagonal is per-class accuracy (recall); the off-diagonal cells are the
       confusions. Row-normalized — hover for the raw point count. Follows the range and taxonomy tabs.
+      With more than one release on the test set, <b>Δ vs previous</b> swaps the cell values for the change
+      since the previous release, coloured green where the model improved and red where it regressed.
     </p>
-    <div class="seg-control cm-slice" id="seg-confusion-slice" role="group" aria-label="Confusion slice"></div>
+    <div class="cm-controls">
+      <div class="seg-control" id="seg-confusion-slice" role="group" aria-label="Confusion slice"></div>
+      <div class="seg-control" id="seg-confusion-mode" role="group" aria-label="Confusion view"></div>
+    </div>
     <div class="chart-card"><div data-confusion="seg3d"></div></div>
   </article>
 
@@ -2272,11 +2284,29 @@ function renderChart(spec) {
 
 /* ---------------- confusion matrix heatmap ---------------- */
 let currentConfusionSlice = "whole";
+let currentConfusionView = "current";
 const CONFUSION_SLICES = [
   { id: "whole", label: "Whole scene" },
   { id: "road", label: "Road" },
   { id: "corridor", label: "Corridor" },
 ];
+const CONFUSION_VIEWS = [
+  { id: "current", label: "Current" },
+  { id: "diff", label: "\u0394 vs previous" },
+];
+// The diff colour ramp auto-scales to the largest change in the matrix so structure
+// is always visible, but never below this floor — otherwise a release that moved
+// nothing would be painted as though it had moved a lot.
+const CM_DIFF_FLOOR = 0.02;
+const CM_TEXT_EPS = 0.005;   // smaller than this and the cell counts as unchanged
+// Once a change is worth showing at all it starts here on the colour ramp, so the
+// smallest reported change is still legible; magnitude orders everything above it.
+const CM_RAMP_FLOOR = 0.35;
+// Every unchanged cell gets the same flat grey — this view is about what moved, so
+// an unchanged cell only has to say "this pair still occurs", not how big it is
+// (Current already shows that). One tone, set clear of the surface but well under
+// the green and red, so the cells that moved are the only thing with a gradient.
+const CM_NEUTRAL_FILL = "color-mix(in oklab, var(--muted) 27%, var(--surface))";
 function confusionClasses(task) {
   // {key, label} per class in the active taxonomy (det uses bare keys, seg [key,label]).
   return task === "det3d"
@@ -2288,16 +2318,41 @@ function confusionSliceName(task, sliceId) {
   if (sliceId === "corridor") return COR;
   return "";
 }
+/* One model's matrix: raw counts, per-row totals and the row-normalized shares.
+   Each model is normalized by its OWN row totals, so a diff compares shares and is
+   not skewed by one release simply having matched more objects. */
+function confusionMatrixOf(model, task, classes, slice) {
+  const raw = classes.map((t) => classes.map((p) =>
+    metricValue(model, task, slice, `confusion_${t.key}__${p.key}`, currentRange)));
+  const totals = raw.map((row) => row.reduce((s, v) => s + (typeof v === "number" ? v : 0), 0));
+  const norm = raw.map((row, i) => row.map((v) =>
+    (typeof v === "number" && totals[i] > 0) ? v / totals[i] : null));
+  return { raw, totals, norm, has: raw.some((row) => row.some((v) => typeof v === "number")) };
+}
+
+function fmtShare(v) {
+  return v === null ? "–" : (v * 100).toFixed(1) + "%";
+}
+function fmtDelta(d) {
+  return (d > 0 ? "+" : "\u2212") + Math.abs(d).toFixed(2).replace(/^0/, "");
+}
+// Percentage points, for the tooltip: a cell too small to label still reports its
+// exact move on hover rather than rounding away to "-.00".
+function fmtDeltaPP(d) {
+  const pp = d * 100;
+  return (pp > 0 ? "+" : pp < 0 ? "\u2212" : "\u00b1") + Math.abs(pp).toFixed(2) + " pp";
+}
+
 function renderConfusion(task) {
   const host = document.querySelector(`[data-confusion="${task}"]`);
   if (!host) return;
   host.textContent = "";
   const model = MODELS.length ? MODELS[MODELS.length - 1] : null;
+  const earlier = MODELS.length > 1 ? MODELS[MODELS.length - 2] : null;
   const classes = confusionClasses(task);
   const slice = confusionSliceName(task, currentConfusionSlice);
-  const raw = classes.map((t) => classes.map((p) =>
-    metricValue(model, task, slice, `confusion_${t.key}__${p.key}`, currentRange)));
-  const hasData = model && raw.some((row) => row.some((v) => typeof v === "number"));
+  const cur = model ? confusionMatrixOf(model, task, classes, slice) : null;
+  const hasData = cur && cur.has;
   if (!hasData) {
     const note = document.createElement("div");
     note.className = "slot-note";
@@ -2307,8 +2362,26 @@ function renderConfusion(task) {
     host.appendChild(note);
     return;
   }
+  const prev = earlier ? confusionMatrixOf(earlier, task, classes, slice) : null;
+  const diffMode = currentConfusionView === "diff" && prev !== null && prev.has;
+  const raw = cur.raw;
   const n = classes.length;
-  const rowTotals = raw.map((row) => row.reduce((s, v) => s + (typeof v === "number" ? v : 0), 0));
+  const rowTotals = cur.totals;
+
+  // A cell is comparable only when BOTH releases scored that row; a row the other
+  // release never populated would otherwise read as a full-swing improvement.
+  const comparable = (i, j) => diffMode && cur.totals[i] > 0 && prev.totals[i] > 0
+    && typeof cur.norm[i][j] === "number" && typeof prev.norm[i][j] === "number";
+  const deltaAt = (i, j) => comparable(i, j) ? cur.norm[i][j] - prev.norm[i][j] : null;
+  let diffScale = CM_DIFF_FLOOR;
+  if (diffMode) {
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        const d = deltaAt(i, j);
+        if (d !== null) diffScale = Math.max(diffScale, Math.abs(d));
+      }
+  }
+
   const cs = n > 10 ? 24 : 34, LBL = 168, TOP = 128;
   const W = LBL + n * cs + 8, H = TOP + n * cs + 24;
   const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img" });
@@ -2329,17 +2402,44 @@ function renderConfusion(task) {
       const count = raw[i][j];
       const total = rowTotals[i];
       const norm = (typeof count === "number" && total > 0) ? count / total : 0;
-      const fill = `color-mix(in oklab, var(--series-1) ${Math.round(norm * 100)}%, var(--surface))`;
+      const delta = deltaAt(i, j);
+      let fill, valueText = "", strong = false;
+      if (diffMode) {
+        if (delta !== null && Math.abs(delta) >= CM_TEXT_EPS) {
+          // On the diagonal more is better; every off-diagonal cell is a swap, so less is.
+          const better = i === j ? delta > 0 : delta < 0;
+          const mag = Math.min(1, Math.abs(delta) / diffScale);
+          strong = mag > 0.5;
+          fill = `color-mix(in oklab, var(${better ? "--good" : "--danger"}) ${Math.round((CM_RAMP_FLOOR + (1 - CM_RAMP_FLOOR) * mag) * 100)}%, var(--surface))`;
+          valueText = fmtDelta(delta);
+        } else {
+          // One flat grey for a pair that occurs in at least one release but did not
+          // move; blank for a pair that never happens, and for a row one release never
+          // scored. Nothing here scales — no value is drawn, so no contrast to pick.
+          const present = delta !== null && (cur.norm[i][j] > 0 || prev.norm[i][j] > 0);
+          fill = present ? CM_NEUTRAL_FILL : "var(--surface)";
+        }
+      } else {
+        strong = norm > 0.5;
+        fill = `color-mix(in oklab, var(--series-1) ${Math.round(norm * 100)}%, var(--surface))`;
+        if (norm >= CM_TEXT_EPS) valueText = norm >= 0.995 ? "1" : norm.toFixed(2).replace(/^0/, "");
+      }
       svg.appendChild(svgEl("rect", { x, y, width: cs, height: cs, fill, class: "cm-cell" }));
-      if (norm >= 0.005) {
-        const vt = svgEl("text", { x: x + cs / 2, y: y + cs / 2 + 3, class: "cm-val", "text-anchor": "middle", fill: norm > 0.5 ? "var(--surface)" : "var(--ink2)" });
-        vt.textContent = norm >= 0.995 ? "1" : norm.toFixed(2).replace(/^0/, "");
+      if (valueText) {
+        const vt = svgEl("text", { x: x + cs / 2, y: y + cs / 2 + 3, class: "cm-val", "text-anchor": "middle", fill: strong ? "var(--surface)" : "var(--ink2)" });
+        vt.textContent = valueText;
         svg.appendChild(vt);
       }
       const hit = svgEl("rect", { x, y, width: cs, height: cs, class: "cm-hit", tabindex: "0" });
       const cnt = typeof count === "number" ? count : 0;
-      const label = `${newest.name} · true ${tc.label} → pred ${pc.label}`;
-      const tip = `${(norm * 100).toFixed(1)}%  ·  ${fmtValue(cnt)}`;
+      const label = diffMode
+        ? `${earlier.name} → ${newest.name} · true ${tc.label} → pred ${pc.label}`
+        : `${newest.name} · true ${tc.label} → pred ${pc.label}`;
+      const tip = diffMode
+        ? (delta === null
+            ? "not comparable — one release has no data for this row"
+            : `${fmtShare(prev.norm[i][j])} → ${fmtShare(cur.norm[i][j])}  ·  ${fmtDeltaPP(delta)}`)
+        : `${(norm * 100).toFixed(1)}%  ·  ${fmtValue(cnt)}`;
       hit.addEventListener("pointerenter", (e) => showTooltip(e, tip, label));
       hit.addEventListener("pointermove", moveTooltip);
       hit.addEventListener("pointerleave", hideTooltip);
@@ -2356,11 +2456,53 @@ function renderConfusion(task) {
   wrap.className = "cm-wrap";
   wrap.appendChild(svg);
   host.appendChild(wrap);
+  if (diffMode) {
+    const legend = document.createElement("div");
+    legend.className = "cm-legend";
+    const word = (text, color) => {
+      const b = document.createElement("b");
+      b.textContent = text;
+      if (color) b.style.color = color;
+      return b;
+    };
+    legend.append(
+      "Change in each cell's row share from ", word(earlier.name), " to ", word(newest.name), ". ",
+      word("green", "var(--good)"), " = better, ",
+      word("red", "var(--danger)"), " = worse, ",
+      word("grey"), " = no significant change.",
+    );
+    host.appendChild(legend);
+  }
 }
 function renderConfusions() {
+  buildConfusionModeTabs();
   const tasks = activeTasks();
   if (tasks.has("det3d")) renderConfusion("det3d");
   if (tasks.has("seg3d")) renderConfusion("seg3d");
+}
+/* The diff view only exists with something to diff against, so the control is
+   hidden on a single-release report (and on a test set that only has one). */
+function buildConfusionModeTabs() {
+  const enabled = MODELS.length > 1;
+  if (!enabled) currentConfusionView = "current";
+  for (const hostId of ["det-confusion-mode", "seg-confusion-mode"]) {
+    const host = document.getElementById(hostId);
+    if (!host) continue;
+    host.textContent = "";
+    host.style.display = enabled ? "" : "none";
+    if (!enabled) continue;
+    for (const v of CONFUSION_VIEWS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = v.label;
+      btn.setAttribute("aria-pressed", v.id === currentConfusionView ? "true" : "false");
+      btn.addEventListener("click", () => {
+        currentConfusionView = v.id;
+        renderConfusions();
+      });
+      host.appendChild(btn);
+    }
+  }
 }
 function buildConfusionSliceTabs() {
   for (const hostId of ["det-confusion-slice", "seg-confusion-slice"]) {
