@@ -350,7 +350,7 @@
       <li><a href="#today">What we measure today</a></li>
       <li><a href="#glance">The plan at a glance</a></li>
       <li><a href="#core">One metric core, pluggable inputs</a></li>
-      <li><a href="#filters">Evaluation filters (region · corridor · range)</a></li>
+      <li><a href="#filters">Evaluation filters (region · corridor · collision · range)</a></li>
       <li><a href="#classes">Classes and taxonomy</a></li>
       <li><a href="#catalog">Metric catalog</a></li>
       <li><a href="#architecture">Evaluation architecture (suites &amp; contracts)</a></li>
@@ -401,7 +401,7 @@
     The fix is not one new number. It is weighting and slicing errors along three axes:
   </p>
   <div class="axis-strip">
-    <div class="axis"><b>WHERE</b><span>Is the object on or near a drivable surface? On ego's path? (lanelet map, ego corridor)</span></div>
+    <div class="axis"><b>WHERE</b><span>Is the object on or near a drivable surface? On ego's path? (lanelet map, corridor, collision area)</span></div>
     <div class="axis"><b>WHEN</b><span>How soon could ego and the object physically collide? (time-to-collision)</span></div>
     <div class="axis"><b>WHAT</b><span>Are the box properties planning consumes correct — yaw, corners, nearest surface, velocity — and stable over time?</span></div>
   </div>
@@ -455,8 +455,8 @@
   <h2>The plan at a glance</h2>
   <p>
     Fifteen metrics across six families, each reported along <strong>three axes</strong> — distance-range
-    bins, lanelet <strong>region variants</strong> (whole-scene · road · walkway — the region
-    filter in <a href="#filters">Section 5</a>), and the <strong>class taxonomy</strong> (per trained class
+    bins, the <strong>filter slices</strong> (whole-scene · road · walkway · corridor · collision area —
+    the filter axis in <a href="#filters">Section 5</a>), and the <strong>class taxonomy</strong> (per trained class
     vs behaviour groups — <a href="#taxonomy">Section 6</a>).
     Each links to its detail page in <a href="#catalog">Section 7</a>.
   </p>
@@ -500,7 +500,7 @@
     <div class="card family">
       <h3>Uncertainty</h3>
       <p>Is the model's confidence honest, and does its uncertainty flag its own mistakes? Reported
-         whole-scene and per lanelet region (road · walkway).</p>
+         whole-scene and per filter slice (road · walkway · corridor · collision area).</p>
       <ul>
         <li><a href="#m-calibration">Calibration error (ECE)</a> <span class="chip det3d">det3d</span><span class="chip seg3d">seg3d</span></li>
         <li><a href="#m-entropy-auroc">Uncertainty usefulness (entropy AUROC)</a> <span class="chip">diagnostic</span></li>
@@ -519,10 +519,10 @@
   <div class="callout">
     <b>Region variants — the second evaluation axis.</b> Lanelet masking is not a single metric; it is an
     axis applied to <em>every</em> metric here, det3d and seg3d alike, exactly as the distance-range bins
-    are. Each metric is reported in four region slices: <b>whole-scene</b> (no map), <b>road</b> —
-    everywhere the car drives: <code>road</code>, <code>road_shoulder</code> and <code>crosswalk</code>
-    lanelets plus drivable-area polygons — <b>walkway</b> (pedestrian <code>walkway</code> lanelets), and
-    <b>both</b> (their union).
+    are. Each metric is reported in three region slices: <b>whole-scene</b> (no map), <b>road</b> —
+    everywhere the car drives: the <code>road</code>, <code>road_shoulder</code>, <code>crosswalk</code>,
+    <code>drivable_area</code>, <code>intersection_area</code> and <code>crosswalk_polygon</code>
+    primitives — and <b>walkway</b> (pedestrian <code>walkway</code> lanelets).
     Detection boxes and segmentation points are placed into a region by transforming them to the map frame
     with the per-frame ego pose and testing polygon membership. <a href="#filters">Section 5</a> defines the
     filter; a region slice on a map-less dataset fails loud rather than silently reporting whole-scene,
@@ -547,8 +547,8 @@
   </div>
   <p style="font-size:0.9rem; color:var(--ink2);">
     Cutting across all six families are three report axes applied to every metric: <strong>distance-range
-    bins</strong>, the <strong>region variants</strong> (whole-scene · road · walkway) defined in
-    <a href="#filters">Section 5</a>, and the <strong>class taxonomy</strong> (per trained class vs
+    bins</strong>, the <strong>filter slices</strong> (whole-scene · road · walkway · corridor ·
+    collision area) defined in <a href="#filters">Section 5</a>, and the <strong>class taxonomy</strong> (per trained class vs
     behaviour groups) defined in <a href="#taxonomy">Section 6</a>.
   </p>
 </section>
@@ -605,7 +605,7 @@
   <figure>
     <div class="fig-wrap">
     <svg viewBox="0 0 700 300" width="700" height="300" role="img" aria-labelledby="fig-reach-title">
-      <title id="fig-reach-title">Bird's-eye worst-case reachability: ego expands to everything reachable at maximum speed under its tightest feasible left/right turn — constant-curvature arcs that keep their curvature right up to the road edge, where the drivable area hard-clips them with a sharp corner. A crossing pedestrian expands an isotropic disc; a stationary barrier stays put. TTC is the first time a set meets ego's region.</title>
+      <title id="fig-reach-title">Bird's-eye worst-case collision model: ego expands to everything it can reach at maximum speed under its tightest feasible left/right turn — constant-curvature arcs that keep their curvature right up to the road edge, where the drivable area hard-clips them with a sharp corner. A crossing pedestrian expands an isotropic disc; a stationary barrier stays put. TTC is the first time a set meets ego's region.</title>
       <defs><clipPath id="road-clip"><rect x="0" y="92" width="700" height="150"/></clipPath></defs>
       <rect x="0" y="46" width="700" height="46" fill="var(--chip-bg)" opacity="0.55"/>
       <text x="34" y="40" class="svg-label small">sidewalk</text>
@@ -613,9 +613,9 @@
       <text x="612" y="234" class="svg-label small" text-anchor="end">road (drivable)</text>
       <!-- reachable region + its arcs are drawn extending off-road, then hard-clipped to the road -->
       <g clip-path="url(#road-clip)">
-        <path d="M 90 167 C 150 167 200 108 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290 C 200 226 150 167 90 167 Z" fill="var(--ego)" opacity="0.16"/>
-        <path d="M 90 167 C 150 167 200 108 210 44" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
-        <path d="M 90 167 C 150 167 200 226 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 90 156 C 150 156 200 108 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290 C 200 226 150 178 90 178 Z" fill="var(--ego)" opacity="0.16"/>
+        <path d="M 90 156 C 150 156 200 108 210 44" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 90 178 C 150 178 200 226 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
         <path d="M 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>
         <path d="M 90 167 L 372 167" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3" stroke-dasharray="4 4"/>
         <path d="M 90 167 Q 235 150 322 112" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3"/>
@@ -655,7 +655,7 @@
   <figure>
     <div class="fig-wrap">
     <svg viewBox="0 0 700 210" width="700" height="210" role="img" aria-labelledby="fig-lead-title">
-      <title id="fig-lead-title">A lead vehicle at the same speed: ego and the lead both advance to the right by the same amount over two seconds, so the gap between them never closes and the reachable sets never overlap — time-to-collision is infinite.</title>
+      <title id="fig-lead-title">A lead vehicle at the same speed: ego and the lead both advance to the right by the same amount over two seconds, so the gap between them never closes and the collision sets never overlap — time-to-collision is infinite.</title>
       <rect x="0" y="66" width="700" height="96" fill="var(--chip-bg)" rx="4"/>
       <line x1="0" y1="114" x2="700" y2="114" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.4"/>
       <!-- t=now: ego + lead -->
@@ -711,11 +711,12 @@
   </p>
   <ul style="font-size:0.92rem; color:var(--ink2);">
     <li>the lanelet <strong>region</strong> filter (road / walkway);</li>
-    <li>the ego <strong>corridor</strong> filter (objects and points in the ego's forward path);</li>
+    <li>the straight <strong>corridor</strong> filter (a fixed strip ahead of ego, no map involved);</li>
+          <li>the ego <strong>collision</strong> filter (objects and points in the ego collision area);</li>
     <li>the built-in <strong>distance-range</strong> bins (near / mid / far rings around the ego).</li>
   </ul>
   <p>
-    The region and corridor filters are pluggable <code>MetricFilter</code>s (more can be added without
+    The region, corridor and collision filters are pluggable <code>MetricFilter</code>s (more can be added without
     touching any metric); the distance-range bins are the suite's built-in radial windowing. Every metric
     carries an optional <code>filter</code> (default <code>None</code> = whole-scene) and is always also
     emitted per range.
@@ -747,7 +748,7 @@
       <title id="fig-region-title">Bird's-eye view of the lanelet regions: a road band (including a crosswalk stripe, where the car drives) and a separate walkway band; objects are assigned to road, walkway, or neither, and metrics run per region. A car whose center is off the road but whose footprint overhangs it is still included, because membership is any footprint overlap (no threshold), not the center.</title>
       <rect x="10" y="96" width="640" height="70" rx="6" fill="var(--ego)" opacity="0.14"/>
       <line x1="10" y1="131" x2="650" y2="131" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.5"/>
-      <text x="24" y="120" class="svg-label small" fill="var(--ego)">road (road · road_shoulder · crosswalk)</text>
+      <text x="24" y="120" class="svg-label small" fill="var(--ego)">road (drivable lanelet primitives)</text>
       <rect x="418" y="96" width="30" height="70" fill="var(--ego)" opacity="0.22"/>
       <text x="433" y="90" class="svg-label small" fill="var(--ego)" text-anchor="middle">crosswalk</text>
       <rect x="10" y="60" width="640" height="26" rx="5" fill="var(--accent)" opacity="0.16"/>
@@ -825,7 +826,7 @@
       <p>A <code>RegionFilter</code> takes a list of literal lanelet2 tokens; the map provider unions every
       lanelet (by <code>subtype</code>) and area (by <code>type</code>) whose tag is in the list into that
       region's polygon. The presets:</p>
-      <div class="formula">road = [road, road_shoulder, crosswalk] (+ drivable_area / intersection_area / crosswalk_polygon)<br>walkway = [walkway]</div>
+      <div class="formula">road = [road, road_shoulder, crosswalk, drivable_area, intersection_area, crosswalk_polygon]<br>walkway = [walkway]</div>
       <p>A detection box belongs to a region when <em>any part</em> of its footprint overlaps it (so an
       object overhanging from an off-region center still counts); a segmentation point by point-in-polygon:</p>
       <div class="formula">keep(box, M) = footprint(box) ∩ M ≠ ∅ &nbsp; (any overlap)<br>cut inward (expand: false): &nbsp; keep(point, M) = point ∈ M &nbsp;∧&nbsp; point ∈ (U ⊖ margin)<br>grow outward (expand: true): &nbsp; keep(point, M) = point ∈ M &nbsp;∨&nbsp; point ∈ ((M ⊕ margin) ∖ U)</div>
@@ -849,10 +850,10 @@
     <div class="body">
       <p>Filters are optional and hydra-instantiated — list a metric once per region you want; each filter
       type carries its own kwargs. <code>filter: None</code> (the default) is the unchanged whole-scene metric.</p>
-      <div class="formula">- {_target_: …tp_errors.TpErrors, stages: [test]}&nbsp; # whole-scene<br>- {_target_: …tp_errors.TpErrors, stages: [test],<br>&nbsp;&nbsp; filter: {_target_: …metrics.filters.RegionFilter, region: [road, road_shoulder, crosswalk]}}<br>- {_target_: …tp_errors.TpErrors, stages: [test],<br>&nbsp;&nbsp; filter: {_target_: …metrics.filters.RegionFilter, region: [walkway]}}</div>
+      <div class="formula">- {_target_: …tp_errors.TpErrors, stages: [test]}&nbsp; # whole-scene<br>- {_target_: …tp_errors.TpErrors, stages: [test],<br>&nbsp;&nbsp; filter: {_target_: …metrics.filters.RegionFilter,<br>&nbsp;&nbsp;&nbsp;&nbsp; region: [road, road_shoulder, crosswalk, drivable_area, intersection_area, crosswalk_polygon], name: region_road}}<br>- {_target_: …tp_errors.TpErrors, stages: [test],<br>&nbsp;&nbsp; filter: {_target_: …metrics.filters.RegionFilter, region: [walkway]}}</div>
       <p>The suite groups components by filter, builds one filtered sub-state per (range, filter) so the
       shared match curves are reused, and prefixes each filtered metric's keys with the filter name
-      (<code>road/mATE_…</code>). Two metrics that differ only by filter therefore never collide.</p>
+      (<code>region_road/mATE_…</code>). Two metrics that differ only by filter therefore never collide.</p>
     </div>
   </details>
   <details>
@@ -877,35 +878,64 @@
     </div>
   </details>
 
-  <h3>The corridor filter</h3>
+  <h3>The corridor and collision filters</h3>
   <p>
-    A second filter type on the same axis: <code>CorridorFilter</code> keeps only the elements in the ego's
-    <strong>reachable path</strong> — the curvature-bounded region reachable within the horizon at the max
-    map-legal speed, <strong>clipped to the road lanelets</strong>, so the
-    corridor follows the road through bends instead of shooting straight off it into off-road objects. It is
+        <code>CorridorFilter</code> keeps only the elements inside a <strong>straight corridor</strong>
+        ahead of ego: a fixed-width forward strip in the ego frame, 3 m wide by default with no length bound of its own, because the range bins already slice every key by distance. It uses no map and no pose, so the slice covers every scene. A detection box counts when any part of its
+        footprint overlaps the strip.
+      </p>
+      <figure>
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 200" width="660" height="200" role="img" aria-labelledby="fig-strip-title">
+        <title id="fig-strip-title">Bird's-eye view of the straight corridor: a fixed-width forward strip ahead of ego with no length bound. An object inside or overlapping the strip is kept, an object beside or behind it is dropped.</title>
+        <rect x="8" y="8" width="644" height="184" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="330" y="32" class="svg-label strong" text-anchor="middle">A fixed-width strip ahead of ego, no map involved</text>
+        <rect x="96" y="86" width="548" height="44" fill="var(--ego)" opacity="0.14"/>
+        <line x1="96" y1="86" x2="644" y2="86" stroke="var(--ego)" stroke-dasharray="5 4" opacity="0.7"/><line x1="96" y1="130" x2="644" y2="130" stroke="var(--ego)" stroke-dasharray="5 4" opacity="0.7"/><line x1="96" y1="86" x2="96" y2="130" stroke="var(--ego)" stroke-dasharray="5 4" opacity="0.7"/><polygon points="628,101 646,108 628,115" fill="var(--ego)" opacity="0.5"/>
+        <rect x="46" y="94" width="50" height="28" rx="4" fill="var(--ego)"/>
+        <text x="71" y="140" class="svg-label small" text-anchor="middle">ego</text>
+        
+        <text x="330" y="166" class="svg-label small" text-anchor="middle">no length bound, distance is sliced by the range bins</text>
+        <line x1="560" y1="86" x2="560" y2="130" stroke="var(--muted)" stroke-width="1" opacity="0.6"/>
+        <text x="560" y="78" class="svg-label small" text-anchor="middle">width</text>
+        <rect x="250" y="98" width="40" height="20" rx="3" fill="var(--obj)"/>
+        <text x="270" y="80" class="svg-label small" fill="var(--obj)" text-anchor="middle">inside -&gt; kept</text>
+        <rect x="380" y="120" width="40" height="20" rx="3" fill="var(--obj)"/>
+        <text x="400" y="52" class="svg-label small" fill="var(--obj)" text-anchor="middle">overlaps -&gt; kept</text>
+        <line x1="400" y1="58" x2="400" y2="116" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+        <rect x="250" y="44" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
+        <text x="170" y="58" class="svg-label small" fill="var(--muted)" text-anchor="middle">beside -&gt; dropped</text>
+        
+        
+      </svg>
+      </div>
+      <figcaption>The corridor is a fixed-width forward strip in the ego frame with no length bound. It needs no lanelet map, so the slice covers every scene.</figcaption>
+      </figure>
+      <p>
+        A third filter type, on the same axis: <code>CollisionFilter</code> keeps only the elements in the ego's <strong>collision area</strong> — the curvature-bounded region reachable within the horizon at the max
+    map-legal speed, <strong>clipped to the road lanelets</strong>, so it follows the road through bends instead of shooting straight off it into off-road objects. It is
     the ego <strong>reachable region</strong> of the one collision model (curvature-bounded, clipped to the
     road), planner-independent — <em>not</em> the path the vehicle happened to drive
     (<a href="#core">Section 4</a>): the driver already steered around the hazard the model missed. This is
     the "in ego's path" slice, and like the region filter it composes with <em>any</em> metric, det3d and
-    seg3d alike: yaw error for in-path objects, mAP in the corridor, segmentation IoU / error clusters /
-    uncertainty on the road ahead. It is the filter form of the same corridor the
-    <a href="#m-critical-fp-fn">critical FP / FN curves</a> use; where those are a dedicated curve, the
-    corridor <em>filter</em> lets every other metric be reported in-path too.
+    seg3d alike: yaw error for in-path objects, mAP in the reachable area, segmentation IoU / error clusters /
+    uncertainty on the road ahead. It is the filter form of the same collision set the
+    <a href="#m-critical-fp-fn">critical FP / FN curves</a> use; where those are a dedicated curve, the <em>filter</em> lets every other metric be reported in-path too.
   </p>
   <figure>
     <div class="fig-wrap">
-    <svg viewBox="0 0 660 220" width="660" height="220" role="img" aria-labelledby="fig-corridor-title">
-      <title id="fig-corridor-title">Bird's-eye view: the corridor is the ego reachable region — everything reachable within the horizon at the lane speed limit under bounded steering, hard-clipped to the road; an object inside is kept, one off the road or beyond reach is dropped.</title>
-      <defs><clipPath id="corridor-clip"><rect x="8" y="70" width="644" height="84"/></clipPath></defs>
+    <svg viewBox="0 0 660 220" width="660" height="220" role="img" aria-labelledby="fig-collision-title">
+      <title id="fig-collision-title">Bird's-eye view: the collision area is everything ego could collide with within the horizon at the lane speed limit under bounded steering, hard-clipped to the road; an object inside is kept, one off the road or beyond the horizon is dropped.</title>
+      <defs><clipPath id="collision-clip"><rect x="8" y="70" width="644" height="84"/></clipPath></defs>
       <rect x="8" y="34" width="644" height="36" fill="var(--chip-bg)" opacity="0.55"/>
       <text x="16" y="28" class="svg-label small">sidewalk</text>
       <rect x="8" y="70" width="644" height="84" rx="6" fill="var(--chip-bg)"/>
       <text x="644" y="148" class="svg-label small" text-anchor="end">road (drivable)</text>
-      <!-- reachable region drawn extending off-road, then hard-clipped to the road -->
-      <g clip-path="url(#corridor-clip)">
-        <path d="M 86 112 C 146 112 196 62 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218 C 196 162 146 112 86 112 Z" fill="var(--ego)" opacity="0.16"/>
-        <path d="M 86 112 C 146 112 196 62 206 6" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
-        <path d="M 86 112 C 146 112 196 162 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+      <!-- collision area drawn extending off-road, then hard-clipped to the road -->
+      <g clip-path="url(#collision-clip)">
+        <path d="M 86 102 C 146 102 196 62 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218 C 196 162 146 122 86 122 Z" fill="var(--ego)" opacity="0.16"/>
+        <path d="M 86 102 C 146 102 196 62 206 6" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 86 122 C 146 122 196 162 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
         <path d="M 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>
       </g>
       <rect x="40" y="100" width="46" height="24" rx="4" fill="var(--ego)"/>
@@ -918,23 +948,23 @@
       <text x="366" y="56" class="svg-label small" fill="var(--muted)">off road → dropped</text>
       <!-- object beyond the horizon reach -->
       <rect x="560" y="102" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
-      <text x="580" y="172" class="svg-label small" fill="var(--muted)" text-anchor="middle">beyond reach → dropped</text>
+      <text x="580" y="172" class="svg-label small" fill="var(--muted)" text-anchor="middle">beyond the horizon → dropped</text>
       <text x="150" y="206" class="svg-label small">lane speed limit + tightest feasible turn, clipped at the road edge</text>
     </svg>
     </div>
-    <figcaption>The corridor is the ego's <b>reachable region</b> on the <b>road lanelets</b> (curvature-bounded,
+    <figcaption>The collision area is the ego's worst-case <b>collision region</b> on the <b>road lanelets</b> (curvature-bounded,
     clipped to the road). Any metric restricted to this filter reports only objects
     in ego's path, independent of how the vehicle was actually driven.</figcaption>
   </figure>
   <details>
     <summary>The math &amp; config</summary>
     <div class="body">
-      <p>Corridor C = the ego reachable region of the one collision model (<a href="#core">Section 4</a>):
+      <p>Collision area C = the ego region of the one collision model (<a href="#core">Section 4</a>):
       the curvature-bounded set reachable within the horizon T at the max map-legal speed, clipped to the
       road lanelets. An element is kept when it lies in C — equivalently, when its reachability TTC ≤ T:</p>
       <div class="formula">keep(e) = TTC(e) ≤ T &nbsp; (e in ego's reachable region on the road)</div>
-      <div class="formula">filter: {_target_: …metrics.filters.CorridorFilter, map_provider: …, region: [road, road_shoulder, crosswalk], horizon_s: 4.0}</div>
-      <p>It needs the current ego pose (<code>ego2global</code>) and the scene's lanelet map. No recorded
+      <div class="formula">filter: {_target_: …metrics.filters.CollisionFilter, map_provider: …,<br>&nbsp;&nbsp;&nbsp;&nbsp; region: [road, road_shoulder, crosswalk, drivable_area, intersection_area, crosswalk_polygon],<br>&nbsp;&nbsp;&nbsp;&nbsp; params: {_target_: …geometry.reachability.ReachabilityParams, horizon_s: 4.0}}<br>filter: {_target_: …metrics.filters.CorridorFilter, width_m: 3.0}  # the straight corridor needs neither</div>
+      <p>The collision area needs the current ego pose (<code>ego2global</code>) and the scene's lanelet map, the straight corridor needs neither. No recorded
       future and no observed agent velocity enter — the region is the worst-case reachable set on the road.</p>
     </div>
   </details>
@@ -949,6 +979,30 @@
     <strong>0–121 m</strong>. Distance is the horizontal (BEV) range from the ego, so it composes with the
     region and corridor filters: e.g. "road, 50–90 m" is one slice.
   </p>
+  <figure>
+  <div class="fig-wrap">
+<svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-labelledby="fig-range-title">
+  <title id="fig-range-title">Concentric radial distance bins around ego. Every object or point falls into the bin of its distance from ego, and every metric key is emitted once per bin in addition to the unbinned value.</title>
+  <rect x="8" y="8" width="644" height="224" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">Radial range bins around ego</text>
+  <text x="330" y="52" class="svg-label small" text-anchor="middle">every reported key is emitted once more per bin, with a distance suffix</text>
+  <line x1="60" y1="200" x2="600" y2="200" stroke="var(--line)"/>
+  <path d="M 275 200 A 55 55 0 0 1 385 200" fill="none" stroke="var(--muted)" stroke-dasharray="4 4"/>
+  <path d="M 231 200 A 99 99 0 0 1 429 200" fill="none" stroke="var(--muted)" stroke-dasharray="4 4"/>
+  <path d="M 198 200 A 132 132 0 0 1 462 200" fill="none" stroke="var(--muted)" stroke-dasharray="4 4"/>
+  <rect x="308" y="186" width="44" height="28" rx="4" fill="var(--ego)"/>
+  <text x="288" y="226" class="svg-label small" text-anchor="middle">ego</text>
+  <text x="330" y="166" class="svg-label small" text-anchor="middle">0-50 m</text>
+  <text x="330" y="126" class="svg-label small" text-anchor="middle">50-90 m</text>
+  <text x="330" y="88" class="svg-label small" text-anchor="middle">90-120 m</text>
+  <rect x="336" y="169" width="24" height="14" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="380" y="147" width="24" height="14" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="426" y="153" width="24" height="14" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+</svg>
+  </div>
+  <figcaption>Concentric radial bins around ego: every metric key is emitted once per bin beside the unbinned value.</figcaption>
+  </figure>
+
   <div class="formula">ranges: [{name: 0-50m, 0.0, 50.0}, {name: 50-90m, 50.0, 90.0}, {name: 90-121m, 90.0, 121.0}, {name: 0-121m, 0.0, 121.0}]</div>
 </section>
 
@@ -1244,7 +1298,7 @@
 
   <article class="metric" id="m-critical-fp-fn">
     <div class="metric-head">
-      <h3>Critical FP / FN curves (ego corridor)</h3>
+      <h3>Critical FP / FN curves (ego collision set)</h3>
       <span class="chip repo-aml">AML</span><span class="chip repo-ape">APE</span><span class="chip det3d">det3d</span>
     </div>
     <p>
@@ -1317,7 +1371,7 @@
     <figure>
       <div class="fig-wrap">
       <svg viewBox="0 0 560 250" width="560" height="250" role="img" aria-labelledby="fig-b2-title">
-        <title id="fig-b2-title">Two curves over the confidence threshold: false positives in the corridor fall as the threshold rises while false negatives rise; both are read at the release operating point.</title>
+        <title id="fig-b2-title">Two curves over the confidence threshold: false positives in the collision set fall as the threshold rises while false negatives rise; both are read at the release operating point.</title>
         <line x1="70" y1="30" x2="70" y2="200" stroke="var(--line)" stroke-width="1.5"/>
         <line x1="70" y1="200" x2="500" y2="200" stroke="var(--line)" stroke-width="1.5"/>
         <polyline fill="none" stroke="var(--obj)" stroke-width="2.5"
@@ -1328,9 +1382,9 @@
         <circle cx="340" cy="149" r="5" fill="var(--obj)" stroke="var(--surface)" stroke-width="2"/>
         <circle cx="340" cy="124" r="5" fill="var(--ego)" stroke="var(--surface)" stroke-width="2"/>
         <text x="348" y="26" class="svg-label small">release operating point</text>
-        <text x="78" y="48" class="svg-label" fill="var(--obj)">FP in corridor — phantom brake</text>
+        <text x="78" y="48" class="svg-label" fill="var(--obj)">FP in collision set — phantom brake</text>
         <text x="78" y="62" class="svg-label small" fill="var(--obj)">(usability)</text>
-        <text x="492" y="48" class="svg-label" fill="var(--ego)" text-anchor="end">FN in corridor — missed object</text>
+        <text x="492" y="48" class="svg-label" fill="var(--ego)" text-anchor="end">FN in collision set — missed object</text>
         <text x="492" y="62" class="svg-label small" fill="var(--ego)" text-anchor="end">(safety)</text>
         <text x="285" y="226" class="svg-label" text-anchor="middle">confidence threshold τ →</text>
         <text x="26" y="115" class="svg-label" text-anchor="middle" transform="rotate(-90 26 115)">errors / frame</text>
@@ -1355,7 +1409,7 @@
         <ul>
           <li>Shares the one reachability engine with the collision-risk-weighted mAP — the per-object TTC is computed once per frame and both read it.</li>
           <li>In APE online mode ego's future comes from the planned trajectory instead of the reachable set; same code path via the ego-future provider (Section 4).</li>
-          <li>Reported per class; pedestrian FN-in-corridor is the headline safety number.</li>
+          <li>Reported per class; pedestrian FN in the collision set is the headline safety number.</li>
         </ul>
       </div>
     </details>
@@ -1407,7 +1461,7 @@
       <div class="fig-wrap">
       <svg viewBox="0 0 660 232" width="660" height="232" role="img" aria-labelledby="fig-b2-scene-title">
         <title id="fig-b2-scene-title">Bird's-eye view: ego on a two-lane road. An oncoming vehicle closes fast (low time-to-collision, high weight); a lead vehicle at the same speed can never be caught (infinite time-to-collision, weight zero).</title>
-        <text x="330" y="24" class="svg-label strong" text-anchor="middle" fill="var(--accent-text)">weight follows reachability TTC — not distance</text>
+        <text x="330" y="24" class="svg-label strong" text-anchor="middle" fill="var(--accent-text)">weight follows collision TTC — not distance</text>
         <!-- road, two lanes -->
         <rect x="16" y="70" width="628" height="104" rx="6" fill="var(--chip-bg)"/>
         <line x1="16" y1="122" x2="644" y2="122" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.5"/>
@@ -1499,6 +1553,33 @@
       fully occluded boxes — and the gap between their recalls isolates the occlusion effect from genuine
       detection failures.
     </p>
+  <figure>
+  <div class="fig-wrap">
+<svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-labelledby="fig-occl-title">
+  <title id="fig-occl-title">Bird's-eye scene: a ground-truth box behind an occluder receives no sensor returns and is occluded, a box outside the shadow collects hits and is visible.</title>
+  <rect x="8" y="8" width="644" height="224" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">A box behind an occluder returns no points</text>
+  <text x="30" y="64" class="svg-label small">visible suite keeps hit boxes, the overall suite keeps all,</text>
+  <text x="30" y="80" class="svg-label small">the recall gap between them is the occlusion effect</text>
+  <polygon points="180,118 640,48 640,230 180,150" fill="var(--muted)" opacity="0.12"/>
+  <rect x="36" y="118" width="46" height="30" rx="4" fill="var(--ego)"/>
+  <text x="59" y="166" class="svg-label small" text-anchor="middle">ego</text>
+  <rect x="180" y="118" width="90" height="32" fill="var(--ink2)" opacity="0.25"/>
+  <rect x="180" y="118" width="90" height="32" fill="none" stroke="var(--ink2)"/>
+  <text x="225" y="110" class="svg-label small" text-anchor="middle">occluder</text>
+  <rect x="480" y="116" width="60" height="36" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="510" y="172" class="svg-label small" text-anchor="middle">0 points -&gt; occluded</text>
+  <rect x="300" y="178" width="60" height="36" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <circle cx="300" cy="184" r="2.5" fill="var(--accent)"/>
+  <circle cx="300" cy="192" r="2.5" fill="var(--accent)"/>
+  <circle cx="300" cy="200" r="2.5" fill="var(--accent)"/>
+  <circle cx="300" cy="208" r="2.5" fill="var(--accent)"/>
+  <text x="330" y="228" class="svg-label small" text-anchor="middle">hits -&gt; visible</text>
+</svg>
+  </div>
+  <figcaption>A box behind an occluder returns no points: the visible suite keeps hit boxes, the overall suite keeps all, the recall gap is the occlusion effect.</figcaption>
+  </figure>
+
     <details>
       <summary>Definition &amp; implementation</summary>
       <div class="body">
@@ -1643,14 +1724,14 @@
       </svg>
       </div>
       <figcaption>Per instance, the longest run of unmatched frames — the offline equivalent of the runtime
-      max-consecutive-FN duration. Streaks inside the ego corridor are the critical subset.</figcaption>
+      max-consecutive-FN duration. Streaks inside the ego collision set are the critical subset.</figcaption>
     </figure>
     <details>
       <summary>The math</summary>
       <div class="body">
         <div class="formula">streak(instance) = longest run of frames where the GT is inside evaluation coverage but unmatched</div>
         <p>Reported per class: max and p95 streak length (frames and seconds at the annotation frequency),
-        and the rate of streaks ≥ k frames. Combined with the <a href="#filters">corridor filter</a>: streaks <em>inside the corridor</em>
+        and the rate of streaks ≥ k frames. Combined with the <a href="#filters">collision filter</a>: streaks <em>inside the collision set</em>
         are the critical subset.</p>
       </div>
     </details>
@@ -2057,10 +2138,10 @@
       <summary>The math</summary>
       <div class="body">
         <div class="formula">seg3d: &nbsp; rate = #(misclassified points with entropy H &lt; τ) / #(misclassified points)<br>det3d: &nbsp; rate = #(false positives with score ≥ τ_high) / #(false positives) , &nbsp; τ / τ_high spec-versioned</div>
-        <p>The area comes from the attached region / corridor filter (road / walkway / whole-scene),
+        <p>The area comes from the attached region / corridor / collision filter,
         per range bin. det3d is <strong>false-positive only</strong>: a false negative carries no prediction
         and therefore no confidence, so it cannot be confident or hesitant — the missed-object (safety) axis
-        is the <a href="#m-critical-fp-fn">critical-FN curve</a>. On the road / corridor slice a confident error is exactly
+        is the <a href="#m-critical-fp-fn">critical-FN curve</a>. On the road / collision slice a confident error is exactly
         the confident phantom that triggers a hard brake.</p>
       </div>
     </details>
@@ -2090,6 +2171,90 @@
       trained class and again folded to behaviour groups, where intra-group confusion collapses onto the
       diagonal — so the grouped matrix shows only the swaps that change the driving decision.
     </p>
+  <figure>
+  <div class="fig-wrap">
+<svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-labelledby="fig-dcm-title">
+  <title id="fig-dcm-title">A predicted car box matched onto a ground-truth truck votes one count into the off-diagonal truck-as-car cell of the class confusion matrix.</title>
+  <rect x="8" y="8" width="644" height="224" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">Matched pairs vote a confusion cell</text>
+  <rect x="50" y="104" width="200" height="60" rx="4" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="150" y="186" class="svg-label small" text-anchor="middle">ground truth: truck</text>
+  <rect x="70" y="112" width="110" height="44" rx="4" fill="var(--obj)" opacity="0.13"/>
+  <rect x="70" y="112" width="110" height="44" rx="4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+  <text x="125" y="96" class="svg-label small" fill="var(--obj)" text-anchor="middle">predicted: car</text>
+  <line x1="270" y1="134" x2="392" y2="140" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <polygon points="391,134 404,142 393,148" fill="var(--muted)"/>
+  <text x="512" y="52" class="svg-label small" text-anchor="middle">predicted class</text>
+  <text x="464" y="70" class="svg-label small" text-anchor="middle">car</text>
+  <text x="512" y="70" class="svg-label small" text-anchor="middle">truck</text>
+  <text x="560" y="70" class="svg-label small" text-anchor="middle">bus</text>
+  <rect x="440" y="76" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <rect x="488" y="76" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="536" y="76" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="440" y="124" width="48" height="48" fill="var(--danger)" opacity="0.22" stroke="var(--danger)"/>
+  <rect x="488" y="124" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <rect x="536" y="124" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="440" y="172" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="488" y="172" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="536" y="172" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <text x="464" y="153" class="svg-label strong" text-anchor="middle">+1</text>
+  <text x="432" y="104" class="svg-label small" text-anchor="end">car</text>
+  <text x="432" y="152" class="svg-label small" text-anchor="end">truck</text>
+  <text x="432" y="200" class="svg-label small" text-anchor="end">bus</text>
+  <text x="150" y="216" class="svg-label small" text-anchor="middle">unmatched boxes are dropped</text>
+</svg>
+  </div>
+  <figcaption>det3d: a matched pair whose classes disagree votes one off-diagonal cell; unmatched boxes are dropped.</figcaption>
+  </figure>
+
+  <figure>
+  <div class="fig-wrap">
+<svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-labelledby="fig-scm-title">
+  <title id="fig-scm-title">Walkway points predicted as road vote into the off-diagonal walkway-as-road cell of the point confusion matrix.</title>
+  <rect x="8" y="8" width="644" height="224" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">Every point votes a confusion cell</text>
+  <rect x="30" y="90" width="330" height="76" rx="8" fill="var(--chip-bg)" stroke="var(--line)"/>
+  <text x="90" y="82" class="svg-label small" text-anchor="middle">road</text>
+  <rect x="150" y="90" width="90" height="76" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="195" y="82" class="svg-label small" text-anchor="middle">walkway</text>
+  <circle cx="60" cy="112" r="3" fill="var(--accent)"/>
+  <circle cx="86" cy="142" r="3" fill="var(--accent)"/>
+  <circle cx="112" cy="120" r="3" fill="var(--accent)"/>
+  <circle cx="130" cy="150" r="3" fill="var(--accent)"/>
+  <circle cx="264" cy="112" r="3" fill="var(--accent)"/>
+  <circle cx="292" cy="146" r="3" fill="var(--accent)"/>
+  <circle cx="322" cy="118" r="3" fill="var(--accent)"/>
+  <circle cx="168" cy="114" r="3" fill="var(--obj)"/>
+  <circle cx="192" cy="140" r="3" fill="var(--obj)"/>
+  <circle cx="214" cy="112" r="3" fill="var(--obj)"/>
+  <circle cx="180" cy="154" r="3" fill="var(--obj)"/>
+  <circle cx="222" cy="146" r="3" fill="var(--obj)"/>
+  <text x="195" y="186" class="svg-label small" fill="var(--obj)" text-anchor="middle">walkway points predicted as road</text>
+  <line x1="368" y1="128" x2="392" y2="140" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <polygon points="391,134 404,142 393,148" fill="var(--muted)"/>
+  <text x="512" y="52" class="svg-label small" text-anchor="middle">predicted class</text>
+  <text x="464" y="70" class="svg-label small" text-anchor="middle">road</text>
+  <text x="512" y="70" class="svg-label small" text-anchor="middle">walkway</text>
+  <text x="560" y="70" class="svg-label small" text-anchor="middle">terrain</text>
+  <rect x="440" y="76" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <rect x="488" y="76" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="536" y="76" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="440" y="124" width="48" height="48" fill="var(--danger)" opacity="0.22" stroke="var(--danger)"/>
+  <rect x="488" y="124" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <rect x="536" y="124" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="440" y="172" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="488" y="172" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="536" y="172" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <text x="464" y="153" class="svg-label strong" text-anchor="middle">+5</text>
+  <text x="432" y="104" class="svg-label small" text-anchor="end">road</text>
+  <text x="432" y="152" class="svg-label small" text-anchor="end">walkway</text>
+  <text x="432" y="200" class="svg-label small" text-anchor="end">terrain</text>
+  <text x="195" y="214" class="svg-label small" text-anchor="middle">grouped suites fold both axes onto behaviour groups</text>
+</svg>
+  </div>
+  <figcaption>seg3d: every point votes confusion[true, predicted]; grouped suites fold both axes onto behaviour groups.</figcaption>
+  </figure>
+
     <p style="font-size:0.9rem; color:var(--ink2);">
       <b>seg3d</b> is point-level and needs no matching: the confusion suite already accumulates the point
       matrix, and this metric just emits its cells. <b>det3d</b> has no matrix natively, so predictions are
@@ -2105,8 +2270,7 @@
         <div class="formula">seg3d: &nbsp; M[t, p] = #(points with true class t predicted as p)<br>det3d: &nbsp; M[t, p] = #(matched pairs whose GT is class t and prediction is class p) , &nbsp; match: greedy center-distance ≤ 2 m, class-agnostic</div>
         <p>Emitted as raw counts <code>confusion_&lt;true&gt;__&lt;pred&gt;</code> (the report row-normalizes
         into a heatmap, so both the count and the per-true-class rate are recoverable). Like every metric it
-        carries the filter and range axes: the matrix is reported <strong>whole-scene, on the road slice and
-        in the ego corridor</strong>, each split by distance band — so "what does the model confuse, and
+        carries the filter and range axes: the matrix is reported <strong>whole-scene, on the road slice, in the straight corridor and in the collision area</strong>, each split by distance band — so "what does the model confuse, and
         where" is one lookup.</p>
       </div>
     </details>
@@ -2144,7 +2308,7 @@
           <td><code>Detection3DMetricSuite</code></td>
           <td>Raw per-frame boxes (predictions + filtered GT). The collision-risk metrics read the same
               per-frame samples plus the per-box reachability TTC the suite's collision provider computed at
-              update (no corridor filter — the critical FP / FN curves gate on finite TTC, the weighted mAP
+              update (no area filter — the critical FP / FN curves gate on finite TTC, the weighted mAP
               weights by it); no scene grouping or recorded trajectory</td>
           <td>mAP · APH · NDS · TP errors · corner displacement · heading flips · nearest-surface error ·
               critical FP / FN · collision-risk-weighted mAP · calibration error · confident-error rate</td>
@@ -2179,12 +2343,12 @@
     A model's <code>build_eval_output</code> produces one flat dict per batch; each suite declares the keys
     it needs and fails loud at the first batch when one is missing. Detection is per-frame lists:
   </p>
-  <div class="formula">predictions: [{bboxes_3d, scores_3d, labels_3d}] · gt_boxes · gt_labels · gt_num_points<br>+ ego2global · scene_token &nbsp;(region &amp; corridor filters — the collision-risk metrics run per-frame in the corridor)</div>
+  <div class="formula">predictions: [{bboxes_3d, scores_3d, labels_3d}] · gt_boxes · gt_labels · gt_num_points<br>+ ego2global · scene_token &nbsp;(region &amp; collision filters — the collision-risk metrics run per frame on the collision set)</div>
   <p>
     Segmentation uses one contract for <em>both</em> suites — <code>seg_frames</code>, a list with one entry
     per frame:
   </p>
-  <div class="formula">seg_frames: [ { coord (N×3) · pred (N) · target (N) · scores (N×C)<br>&nbsp;&nbsp;[ · ego2global · scene_token — region &amp; corridor filters ]<br>&nbsp;&nbsp;[ · gt_boxes · gt_box_labels — partial detection ] } , … ]</div>
+  <div class="formula">seg_frames: [ { coord (N×3) · pred (N) · target (N) · scores (N×C)<br>&nbsp;&nbsp;[ · ego2global · scene_token — region &amp; collision filters ]<br>&nbsp;&nbsp;[ · gt_boxes · gt_box_labels — partial detection ] } , … ]</div>
   <p>
     The bracketed metadata is copied through when the dataset supplies it; a configured filter or metric
     that needs a missing key raises naming it — absence is never silent. For T4, <code>scene_token</code>
@@ -2233,7 +2397,7 @@
 }</div>
       <ul style="font-size:0.92rem; color:var(--ink2);">
         <li><strong>Metric keys</strong> are exactly what the suites emit — <code>[filter/]name_range</code>
-            (e.g. <code>corridor/critical_fn_pedestrian_0p5m_0m_121m</code>). <code>NaN</code> → <code>null</code>
+            (e.g. <code>corridor/iou_car_0m_50m</code>). <code>NaN</code> → <code>null</code>
             (rendered as "–", meaning no support), because JSON has no NaN.</li>
         <li><strong>Buckets</strong> are the metric namespaces: <code>det3d</code>, <code>det3d_grouped</code>,
             <code>det3d_visible</code>, <code>det3d_overall</code>, <code>seg3d</code>,
@@ -2367,7 +2531,7 @@
               measurement.</td>
           <td>Comparable only within the same <code>id@vMAJOR.MINOR</code>; baselines are recomputed on
               bump.</td>
-          <td>λ 0.5→0.4; corridor horizon 4 s→3 s; ECE bins 15→20; region border-margin 0.2→0.3 m;
+          <td>λ 0.5→0.4; collision-area horizon 4 s→3 s; ECE bins 15→20; region border-margin 0.2→0.3 m;
               flip threshold π/2→2π/3.</td>
         </tr>
         <tr>
@@ -2455,7 +2619,7 @@
         <tr><th>Input</th><th>Needed by</th><th>Availability (per dataset)</th></tr>
       </thead>
       <tbody>
-        <tr><td>Ego pose per frame + lane speed limit</td><td>Region &amp; corridor filters (frame transform), the collision-risk metrics (reachable set / TTC)</td><td class="yes">Any T4 dataset for <code>ego2global</code>; the ego reachable set needs the current ego state + the lane speed limit (gen2 map), no tracker and no recorded future</td></tr>
+        <tr><td>Ego pose per frame + lane speed limit</td><td>Region &amp; collision filters (frame transform), the collision-risk metrics (reachable set / TTC)</td><td class="yes">Any T4 dataset for <code>ego2global</code>; the ego reachable set needs the current ego state + the lane speed limit (gen2 map), no tracker and no recorded future</td></tr>
         <tr><td>GT boxes + <code>num_lidar_pts</code> + valid flag</td><td>mAP / APH / NDS / TP errors, the true-positive quality metrics, critical FP / FN, and the min-points filter</td><td class="yes">Det3D T4Dataset — box columns and point counts come from t4_devkit; <code>num_lidar_pts</code> drives the min-points filter and the validity flag</td></tr>
         <tr><td>Friction-limited turn radius (R = v²/a<sub>lat</sub>), per-class VRU run speeds, off-map fallback speed</td><td>The reachability engine behind the collision-risk metrics</td><td class="yes">Spec constants, not dataset fields — the wheeled max speed itself comes from the lanelet <code>speed_limit</code> (row above); reachability is deliberately independent of any observed velocity, so no per-object GT velocity is required</td></tr>
         <tr><td>Lanelet map — road / walkway / crosswalk polygons + speed limits (<code>map/lanelet2_map.osm</code>, local coords)</td><td>Region filter (Section 5) — every det3d + seg3d road / walkway slice; the ego reachable set (lane speed limit) for the collision-risk metrics</td><td>gen2 DBs only — older DBs (db_j6_v3/v5, db_largebus_v1, …) ship no <code>map/</code>; the region slice is declared per dataset and fails loud where the map is absent</td></tr>
@@ -2490,7 +2654,7 @@
               heading flips · nearest-surface error · critical FP / FN · collision-risk-weighted mAP ·
               calibration error · confident-error rate. seg3d: IoU · accuracy · PRF1 · error clusters ·
               partial detection · tolerant error rate · calibration error · entropy AUROC ·
-              confident-error rate. Plus the region &amp; corridor filters. The collision-risk metrics use
+              confident-error rate. Plus the region, corridor and collision filters. The collision-risk metrics use
               the one reachability model (Section 4).</td>
           <td class="yes">Runs on the current test data. (Partial detection needs a det3d + seg3d test
               set; everything else is live.)</td>
