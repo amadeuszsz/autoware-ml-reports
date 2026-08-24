@@ -467,7 +467,7 @@
   <h2>How to read this report</h2>
   <p class="explain">
     Five things repeat on every chart, so they are explained once here: the <b>range tabs</b>, the
-    <b>taxonomy tabs</b>, the <b>evaluation slices</b> (region and corridor filters), the
+    <b>taxonomy tabs</b>, the <b>evaluation slices</b> (region, corridor and collision filters), the
     <b>direction of better</b>, and what a missing value means.
   </p>
 
@@ -503,27 +503,30 @@
 
   <h3>Evaluation slices</h3>
   <p class="explain">
-    Besides the whole scene, selected metrics are reported inside lanelet-map regions and inside the
-    corridor — the ego's forward-reachable path on the road. A slice never changes the metric — only
+    Besides the whole scene, every metric is also reported inside lanelet-map regions, inside the
+    straight corridor ahead of ego, and inside the collision area — the ego's reachable region clipped
+    to the road. A slice never changes the metric — only
     <em>which</em> objects or points it counts. Scenes that ship no lanelet map are excluded from the
-    region and corridor slices (their objects and points still count whole-scene), and each filter logs
+    region and collision slices (their objects and points still count whole-scene; the straight corridor
+    needs no map and covers every scene), and each filter logs
     how many frames it ran on — so a slice over partial map coverage is visible, and its class mix can
     differ from whole-scene.
   </p>
   <div class="chip-row">
     <span class="lead">Slices in this report</span>
     <span class="chip">whole scene — no filter</span>
-    <span class="chip">road — lanelet regions [road, road_shoulder, crosswalk]</span>
+    <span class="chip">road — lanelet regions [road, road_shoulder, crosswalk, drivable_area, intersection_area, crosswalk_polygon]</span>
     <span class="chip">walkway — [walkway] lanelets (sparse by design)</span>
-    <span class="chip">corridor — ego reachable region ∩ road (lane speed limit, bounded steering)</span>
+    <span class="chip">corridor — straight strip ahead of ego (3 m wide, no map)</span>
+    <span class="chip">collision area — ego reachable region ∩ road (lane speed limit, bounded steering)</span>
   </div>
   <figure>
     <div class="fig-wrap">
     <svg viewBox="0 0 660 230" width="660" height="230" role="img" aria-labelledby="fig-region-title">
-      <title id="fig-region-title">Bird's-eye view of the lanelet regions: a road band including a crosswalk stripe, and a separate walkway band; objects are assigned to road, walkway, or neither, and metrics run per region. A car whose center is off the road but whose footprint overhangs it is still included, because membership is any footprint overlap (no threshold), not the center.</title>
+      <title id="fig-region-title">Bird's-eye view of the lanelet regions: a road band (including a crosswalk stripe, where the car drives) and a separate walkway band; objects are assigned to road, walkway, or neither, and metrics run per region. A car whose center is off the road but whose footprint overhangs it is still included, because membership is any footprint overlap (no threshold), not the center.</title>
       <rect x="10" y="96" width="640" height="70" rx="6" fill="var(--ego)" opacity="0.14"/>
       <line x1="10" y1="131" x2="650" y2="131" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.5"/>
-      <text x="24" y="120" class="svg-label small" fill="var(--ego)">road (road · road_shoulder · crosswalk)</text>
+      <text x="24" y="120" class="svg-label small" fill="var(--ego)">road (drivable lanelet primitives)</text>
       <rect x="418" y="96" width="30" height="70" fill="var(--ego)" opacity="0.22"/>
       <text x="433" y="90" class="svg-label small" fill="var(--ego)" text-anchor="middle">crosswalk</text>
       <rect x="10" y="60" width="640" height="26" rx="5" fill="var(--accent)" opacity="0.16"/>
@@ -553,27 +556,35 @@
   <figure>
     <div class="fig-wrap">
     <svg viewBox="0 0 660 250" width="660" height="250" role="img" aria-labelledby="fig-margin-title">
-      <title id="fig-margin-title">The segmentation border margin erodes only the outer border of the union of all mapped regions: strips along the top of the walkway and the bottom of the road are excluded, while the internal road-to-walkway border keeps its points on both sides — no dead gap between adjacent regions.</title>
+      <title id="fig-margin-title">The border margin erodes only the outer border of the union of all mapped regions: strips along the top of the walkway and the bottom of the road are excluded, while the internal road-to-walkway border keeps its points on both sides — no dead gap between adjacent regions.</title>
+      <!-- walkway band -->
       <rect x="10" y="50" width="640" height="42" fill="var(--accent)" opacity="0.16"/>
       <text x="24" y="78" class="svg-label small" fill="var(--accent-text)">walkway</text>
+      <!-- road band, adjacent below -->
       <rect x="10" y="92" width="640" height="98" fill="var(--ego)" opacity="0.14"/>
       <text x="24" y="150" class="svg-label small" fill="var(--ego)">road</text>
+      <!-- eroded strips along the OUTER border of the union -->
       <rect x="10" y="50" width="640" height="12" fill="var(--danger)" opacity="0.14"/>
       <rect x="10" y="178" width="640" height="12" fill="var(--danger)" opacity="0.14"/>
       <line x1="10" y1="62" x2="650" y2="62" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="5 4"/>
       <line x1="10" y1="178" x2="650" y2="178" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="5 4"/>
       <text x="340" y="174" class="svg-label small" fill="var(--danger)" text-anchor="middle">outer border ⊖ margin (expand: false) → excluded</text>
+      <!-- internal border: intact -->
       <line x1="10" y1="92" x2="650" y2="92" stroke="var(--ink2)" stroke-width="1.5"/>
       <text x="340" y="110" class="svg-label small" text-anchor="middle">internal border (road ↔ walkway) — not eroded, no gap</text>
+      <!-- margin dimension bracket -->
       <path d="M 626 178 L 634 178 L 634 190 L 626 190" fill="none" stroke="var(--danger)" stroke-width="1.5"/>
       <text x="620" y="188" class="svg-label small" fill="var(--danger)" text-anchor="end">margin</text>
+      <!-- points: kept near the internal border, both sides -->
       <circle cx="460" cy="87" r="5" fill="var(--obj)"/>
       <circle cx="460" cy="98" r="5" fill="var(--obj)"/>
       <text x="472" y="90" class="svg-label small">kept — both sides</text>
+      <!-- points: dropped inside the eroded strips -->
       <circle cx="150" cy="56" r="5" fill="var(--obj)" opacity="0.4"/>
       <text x="162" y="60" class="svg-label small" fill="var(--muted)">dropped</text>
       <circle cx="150" cy="184" r="5" fill="var(--obj)" opacity="0.4"/>
       <text x="162" y="188" class="svg-label small" fill="var(--muted)">dropped</text>
+      <!-- kept point well inside the road -->
       <circle cx="150" cy="135" r="5" fill="var(--obj)"/>
       <text x="162" y="139" class="svg-label small">kept</text>
       <text x="330" y="236" class="svg-label small" text-anchor="middle">erosion applies to the union of ALL regions — never per region</text>
@@ -587,35 +598,67 @@
   </figure>
   <figure>
     <div class="fig-wrap">
+    <svg viewBox="0 0 660 200" width="660" height="200" role="img" aria-labelledby="fig-strip-title">
+        <title id="fig-strip-title">Bird's-eye view of the straight corridor: a fixed-width forward strip ahead of ego with no length bound. An object inside or overlapping the strip is kept, an object beside or behind it is dropped.</title>
+        <rect x="8" y="8" width="644" height="184" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="330" y="32" class="svg-label strong" text-anchor="middle">A fixed-width strip ahead of ego, no map involved</text>
+        <rect x="96" y="86" width="548" height="44" fill="var(--ego)" opacity="0.14"/>
+        <line x1="96" y1="86" x2="644" y2="86" stroke="var(--ego)" stroke-dasharray="5 4" opacity="0.7"/><line x1="96" y1="130" x2="644" y2="130" stroke="var(--ego)" stroke-dasharray="5 4" opacity="0.7"/><line x1="96" y1="86" x2="96" y2="130" stroke="var(--ego)" stroke-dasharray="5 4" opacity="0.7"/><polygon points="628,101 646,108 628,115" fill="var(--ego)" opacity="0.5"/>
+        <rect x="46" y="94" width="50" height="28" rx="4" fill="var(--ego)"/>
+        <text x="71" y="140" class="svg-label small" text-anchor="middle">ego</text>
+        
+        <text x="330" y="166" class="svg-label small" text-anchor="middle">no length bound, distance is sliced by the range bins</text>
+        <line x1="560" y1="86" x2="560" y2="130" stroke="var(--muted)" stroke-width="1" opacity="0.6"/>
+        <text x="560" y="78" class="svg-label small" text-anchor="middle">width</text>
+        <rect x="250" y="98" width="40" height="20" rx="3" fill="var(--obj)"/>
+        <text x="270" y="80" class="svg-label small" fill="var(--obj)" text-anchor="middle">inside -&gt; kept</text>
+        <rect x="380" y="120" width="40" height="20" rx="3" fill="var(--obj)"/>
+        <text x="400" y="52" class="svg-label small" fill="var(--obj)" text-anchor="middle">overlaps -&gt; kept</text>
+        <line x1="400" y1="58" x2="400" y2="116" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+        <rect x="250" y="44" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
+        <text x="170" y="58" class="svg-label small" fill="var(--muted)" text-anchor="middle">beside -&gt; dropped</text>
+        
+        
+      </svg>
+    </div>
+    <figcaption>The corridor slice: a straight fixed-width strip ahead of ego, no map involved — the
+    slice covers every scene, and distance slicing comes from the range bins.</figcaption>
+  </figure>
+  <figure>
+    <div class="fig-wrap">
     <svg viewBox="0 0 660 220" width="660" height="220" role="img" aria-labelledby="fig-corridor-title">
-      <title id="fig-corridor-title">Bird's-eye view: the corridor is the ego reachable region — everything reachable within the horizon at the lane speed limit under bounded steering, hard-clipped to the road; an object inside is kept, one off the road or beyond reach is dropped.</title>
-      <defs><clipPath id="corridor-clip"><rect x="8" y="70" width="644" height="84"/></clipPath></defs>
+      <title id="fig-corridor-title">Bird's-eye view: the collision area is everything ego could collide with within the horizon at the lane speed limit under bounded steering, hard-clipped to the road; an object inside is kept, one off the road or beyond the horizon is dropped.</title>
+      <defs><clipPath id="collision-clip"><rect x="8" y="70" width="644" height="84"/></clipPath></defs>
       <rect x="8" y="34" width="644" height="36" fill="var(--chip-bg)" opacity="0.55"/>
       <text x="16" y="28" class="svg-label small">sidewalk</text>
       <rect x="8" y="70" width="644" height="84" rx="6" fill="var(--chip-bg)"/>
       <text x="644" y="148" class="svg-label small" text-anchor="end">road (drivable)</text>
-      <!-- reachable region drawn extending off-road, then hard-clipped to the road -->
-      <g clip-path="url(#corridor-clip)">
-        <path d="M 86 112 C 146 112 196 62 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218 C 196 162 146 112 86 112 Z" fill="var(--ego)" opacity="0.16"/>
-        <path d="M 86 112 C 146 112 196 62 206 6" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
-        <path d="M 86 112 C 146 112 196 162 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+      <!-- collision area drawn extending off-road, then hard-clipped to the road -->
+      <g clip-path="url(#collision-clip)">
+        <path d="M 86 102 C 146 102 196 62 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218 C 196 162 146 122 86 122 Z" fill="var(--ego)" opacity="0.16"/>
+        <path d="M 86 102 C 146 102 196 62 206 6" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 86 122 C 146 122 196 162 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
         <path d="M 206 6 C 306 26 358 76 358 112 C 358 148 306 198 206 218" fill="none" stroke="var(--ego)" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>
       </g>
       <rect x="40" y="100" width="46" height="24" rx="4" fill="var(--ego)"/>
       <text x="63" y="94" class="svg-label strong" text-anchor="middle">ego</text>
+      <!-- object inside the region -->
       <rect x="268" y="102" width="40" height="20" rx="3" fill="var(--obj)"/>
       <text x="288" y="96" class="svg-label strong" fill="var(--obj)" text-anchor="middle">in path → kept</text>
+      <!-- object on the sidewalk (region is clipped there) -->
       <rect x="268" y="42" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
       <text x="366" y="56" class="svg-label small" fill="var(--muted)">off road → dropped</text>
+      <!-- object beyond the horizon reach -->
       <rect x="560" y="102" width="40" height="20" rx="3" fill="var(--obj)" opacity="0.5"/>
-      <text x="580" y="172" class="svg-label small" fill="var(--muted)" text-anchor="middle">beyond reach → dropped</text>
+      <text x="580" y="172" class="svg-label small" fill="var(--muted)" text-anchor="middle">beyond the horizon → dropped</text>
       <text x="150" y="206" class="svg-label small">lane speed limit + tightest feasible turn, clipped at the road edge</text>
     </svg>
     </div>
-    <figcaption>The corridor slice: the ego's <b>forward-reachable band</b> (longitudinal reach at worst-case
-    speed, bounded lateral half-width) intersected with the <b>road lanelet</b>, so it follows the road on
-    bends. It describes objects and points in the ego's path <em>independent of how the vehicle was actually
-    driven</em>.</figcaption>
+    <figcaption>The collision-area slice: the ego's <b>reachable region</b> (worst-case speed under
+    bounded steering) intersected with the <b>road lanelet</b>, so it follows the road on bends. It
+    describes objects and points in the ego's path <em>independent of how the vehicle was actually
+    driven</em>. The corridor slice is simpler: a straight fixed-width strip ahead of ego, no map
+    involved.</figcaption>
   </figure>
 
   <h3>Direction, bold, and missing values</h3>
@@ -701,58 +744,33 @@
     </p>
     <figure class="explain">
       <div class="fig-wrap">
-      <svg viewBox="0 0 660 212" width="660" height="212" role="img" aria-labelledby="fig-map-title">
-        <title id="fig-map-title">Three bird's-eye vignettes of the 2-meter match gate: a prediction whose center is 0.8 meters from the ground-truth center is a true positive; one 3 meters off misses the gate and counts as a false positive plus a missed ground truth; a prediction with no ground truth nearby is a phantom false positive.</title>
-        <!-- panel 1: TP -->
-        <rect x="8" y="8" width="204" height="178" rx="10" fill="var(--surface)" stroke="var(--line)"/>
-        <text x="110" y="28" class="svg-label strong" text-anchor="middle">center 0.8 m off</text>
-        <circle cx="85" cy="102" r="40" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 3"/>
-        <line x1="85" y1="102" x2="56.7" y2="73.7" stroke="var(--muted)" stroke-width="1"/>
-        <text x="46" y="66" class="svg-label small">2 m</text>
-        <rect x="40" y="82" width="90" height="40" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
-        <g transform="translate(101 110) rotate(7)">
-          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="var(--obj)" opacity="0.10"/>
-          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
-        </g>
-        <line x1="85" y1="102" x2="101" y2="110" stroke="var(--danger)" stroke-width="2.5"/>
-        <circle cx="85" cy="102" r="3" fill="var(--ink2)"/>
-        <circle cx="101" cy="110" r="3" fill="var(--obj)"/>
-        <text x="110" y="152" class="svg-label small" text-anchor="middle">Δ = 0.8 m &lt; 2 m — inside the gate</text>
-        <text x="110" y="172" class="svg-label strong" fill="var(--accent-text)" text-anchor="middle">→ TP (matched)</text>
-        <!-- panel 2: near miss -->
-        <rect x="228" y="8" width="204" height="178" rx="10" fill="var(--surface)" stroke="var(--line)"/>
-        <text x="330" y="28" class="svg-label strong" text-anchor="middle">center 3.0 m off</text>
-        <circle cx="295" cy="102" r="40" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 3"/>
-        <rect x="250" y="82" width="90" height="40" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
-        <g transform="translate(355 112) rotate(-5)">
-          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="var(--obj)" opacity="0.10"/>
-          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
-        </g>
-        <line x1="295" y1="102" x2="355" y2="112" stroke="var(--danger)" stroke-width="2.5"/>
-        <circle cx="295" cy="102" r="3" fill="var(--ink2)"/>
-        <circle cx="355" cy="112" r="3" fill="var(--obj)"/>
-        <text x="322" y="93" class="svg-label small" fill="var(--danger)">Δ = 3.0 m</text>
-        <text x="330" y="152" class="svg-label small" text-anchor="middle">outside the 2 m gate — only the 4 m curve matches it</text>
-        <text x="330" y="172" class="svg-label strong" fill="var(--danger)" text-anchor="middle">→ FP + missed GT (FN)</text>
-        <!-- panel 3: phantom -->
-        <rect x="448" y="8" width="204" height="178" rx="10" fill="var(--surface)" stroke="var(--line)"/>
-        <text x="550" y="28" class="svg-label strong" text-anchor="middle">phantom prediction</text>
-        <g transform="translate(550 104) rotate(4)">
-          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="var(--obj)" opacity="0.10"/>
-          <rect x="-45" y="-20" width="90" height="40" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
-        </g>
-        <circle cx="550" cy="104" r="3" fill="var(--obj)"/>
-        <text x="550" y="152" class="svg-label small" text-anchor="middle">no ground truth anywhere near</text>
-        <text x="550" y="172" class="svg-label strong" fill="var(--danger)" text-anchor="middle">→ FP</text>
-        <!-- legend -->
-        <text x="330" y="204" class="svg-label small" text-anchor="middle">dashed = ground truth · solid = prediction · dotted circle = 2 m match gate around the GT center</text>
-      </svg>
+      <svg viewBox="0 0 660 230" width="660" height="230" role="img" aria-labelledby="fig-map-title">
+  <title id="fig-map-title">Bird's-eye matching scene. A prediction whose center lies inside the ground-truth distance threshold is a true positive, a lone prediction is a false positive, and an unmatched ground-truth box is a false negative.</title>
+  <rect x="8" y="8" width="644" height="214" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">Greedy center-distance matching in score order</text>
+  <text x="150" y="60" class="svg-label small" text-anchor="middle">distance threshold</text>
+  <circle cx="150" cy="122" r="52" fill="none" stroke="var(--accent)" stroke-dasharray="4 4"/>
+  <rect x="116" y="102" width="68" height="40" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="132" y="114" width="68" height="40" rx="3" fill="var(--obj)" opacity="0.13"/>
+  <rect x="132" y="114" width="68" height="40" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+  <circle cx="150" cy="122" r="3" fill="var(--ink2)"/>
+  <circle cx="166" cy="134" r="3" fill="var(--obj)"/>
+  <line x1="150" y1="122" x2="166" y2="134" stroke="var(--accent)" stroke-width="2.5"/>
+  <text x="208" y="130" class="svg-label small" fill="var(--obj)">score 0.92</text>
+  <text x="150" y="190" class="svg-label small" fill="var(--accent-text)" text-anchor="middle">inside threshold -&gt; TP</text>
+  <rect x="326" y="102" width="68" height="40" rx="3" fill="var(--obj)" opacity="0.13"/>
+  <rect x="326" y="102" width="68" height="40" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+  <text x="360" y="94" class="svg-label small" fill="var(--obj)" text-anchor="middle">score 0.71</text>
+  <text x="360" y="190" class="svg-label small" fill="var(--danger)" text-anchor="middle">no ground truth near -&gt; FP</text>
+  <rect x="516" y="102" width="68" height="40" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="550" y="190" class="svg-label small" text-anchor="middle">no prediction -&gt; FN</text>
+  <text x="330" y="208" class="svg-label small" text-anchor="middle">Predictions claim the nearest unclaimed ground truth, AP integrates the resulting precision-recall curve.</text>
+</svg>
       </div>
-      <figcaption>Matching at the 2 m threshold (“AP@2 m”): a prediction is a TP when its <b>center</b>
-      falls inside a GT's 2 m gate; every unmatched prediction is an FP, every unclaimed GT an FN — even
-      when the boxes overlap, like the near miss in the middle. Sweeping the confidence threshold turns
-      these counts into a precision–recall curve; AP is its area, and mAP averages the four gates
-      {0.5, 1, 2, 4} m and then the classes.</figcaption>
+      <figcaption>Matching at the 2 m threshold (“AP@2 m”): a prediction is a TP when its <b>center</b> falls inside a
+    GT's 2 m gate; every unmatched prediction is an FP, every unclaimed GT an FN. Sweeping the confidence
+    threshold turns these counts into a precision–recall curve; AP is its area, and mAP averages the four
+    gates {0.5, 1, 2, 4} m and then the classes.</figcaption>
     </figure>
     <div class="chip-row">
       <span class="lead">Config</span>
@@ -787,28 +805,31 @@
     </p>
     <figure class="explain">
       <div class="fig-wrap">
-      <svg viewBox="0 0 560 150" width="560" height="150" role="img" aria-labelledby="fig-aph-title">
-        <title id="fig-aph-title">Three detections with increasing heading error earn decreasing credit: aligned earns full credit, 45 degrees earns 0.85, reversed earns zero.</title>
-        <g transform="translate(90 62)">
-          <rect x="-40" y="-18" width="80" height="36" rx="4" fill="var(--accent)" opacity="0.15" stroke="var(--accent)" stroke-width="1.5"/>
-          <line x1="0" y1="0" x2="34" y2="0" stroke="var(--ink2)" stroke-width="2"/>
-          <path d="M 27 -5 L 34 0 L 27 5" fill="none" stroke="var(--ink2)" stroke-width="2"/>
-          <text x="0" y="42" class="svg-label small" text-anchor="middle">aligned → credit 1.0</text>
-        </g>
-        <g transform="translate(280 62)">
-          <rect x="-40" y="-18" width="80" height="36" rx="4" fill="var(--warn)" opacity="0.12" stroke="var(--warn)" stroke-width="1.5"/>
-          <line x1="0" y1="0" x2="24" y2="-24" stroke="var(--ink2)" stroke-width="2"/>
-          <path d="M 15 -22 L 24 -24 L 22 -15" fill="none" stroke="var(--ink2)" stroke-width="2"/>
-          <text x="0" y="42" class="svg-label small" text-anchor="middle">45° off → credit 0.85</text>
-        </g>
-        <g transform="translate(470 62)">
-          <rect x="-40" y="-18" width="80" height="36" rx="4" fill="var(--danger)" opacity="0.12" stroke="var(--danger)" stroke-width="1.5"/>
-          <line x1="0" y1="0" x2="-34" y2="0" stroke="var(--danger)" stroke-width="2"/>
-          <path d="M -27 -5 L -34 0 L -27 5" fill="none" stroke="var(--danger)" stroke-width="2"/>
-          <text x="0" y="42" class="svg-label small" text-anchor="middle">reversed → credit 0.0</text>
-        </g>
-        <text x="280" y="128" class="svg-label small" text-anchor="middle">credit = (1 + cos Δψ) / 2 — the same detection, weighted by how well it points</text>
-      </svg>
+      <svg viewBox="0 0 660 220" width="660" height="220" role="img" aria-labelledby="fig-aph-title">
+  <title id="fig-aph-title">Two matched pairs with the same footprint overlap. The left prediction points with the ground truth and keeps full credit, the right prediction is rotated ninety degrees and keeps half credit.</title>
+  <rect x="8" y="8" width="305" height="204" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <rect x="347" y="8" width="305" height="204" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="160" y="32" class="svg-label strong" text-anchor="middle">yaw error 0 -&gt; weight 1.0</text>
+  <text x="499" y="32" class="svg-label strong" text-anchor="middle">yaw error 90 deg -&gt; weight 0.5</text>
+  <rect x="100" y="90" width="120" height="52" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="104" y="94" width="112" height="44" rx="3" fill="var(--obj)" opacity="0.13"/>
+  <rect x="104" y="94" width="112" height="44" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+  <line x1="160" y1="104" x2="228" y2="104" stroke="var(--ink2)" stroke-width="2"/>
+  <polygon points="228,99 240,104 228,109" fill="var(--ink2)"/>
+  <line x1="160" y1="122" x2="235" y2="122" stroke="var(--obj)" stroke-width="2.5"/>
+  <polygon points="235,116 249,122 235,128" fill="var(--obj)"/>
+  <text x="160" y="204" class="svg-label small" text-anchor="middle">prediction heading matches ground truth</text>
+  <rect x="439" y="90" width="120" height="52" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <g transform="translate(499 116) rotate(90)">
+    <rect x="-56" y="-22" width="112" height="44" rx="3" fill="var(--obj)" opacity="0.13"/>
+    <rect x="-56" y="-22" width="112" height="44" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
+  </g>
+  <line x1="499" y1="116" x2="567" y2="116" stroke="var(--ink2)" stroke-width="2"/>
+  <polygon points="567,111 579,116 567,121" fill="var(--ink2)"/>
+  <line x1="499" y1="116" x2="499" y2="176" stroke="var(--obj)" stroke-width="2.5"/>
+  <polygon points="493,176 499,190 505,176" fill="var(--obj)"/>
+  <text x="499" y="204" class="svg-label small" text-anchor="middle">prediction heading off by 90 deg</text>
+</svg>
       </div>
     </figure>
     <div class="chip-row">
@@ -837,31 +858,40 @@
     </p>
     <figure class="explain">
       <div class="fig-wrap">
-      <svg viewBox="0 0 640 170" width="640" height="170" role="img" aria-labelledby="fig-tp-title">
-        <title id="fig-tp-title">Three panels: translation error as an arrow between box centers, scale error as a size mismatch of aligned boxes, orientation error as an angle between headings.</title>
-        <g transform="translate(105 75)">
-          <rect x="-60" y="-26" width="120" height="52" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 5"/>
-          <rect x="-38" y="-14" width="120" height="52" rx="3" fill="none" stroke="var(--obj)" stroke-width="2"/>
-          <circle cx="0" cy="0" r="3" fill="var(--ink2)"/>
-          <circle cx="22" cy="12" r="3" fill="var(--obj)"/>
-          <path d="M 0 0 L 22 12" stroke="var(--danger)" stroke-width="2.5"/>
-          <text x="0" y="70" class="svg-label small" text-anchor="middle">ATE — center offset (m)</text>
-        </g>
-        <g transform="translate(320 75)">
-          <rect x="-60" y="-26" width="120" height="52" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 5"/>
-          <rect x="-44" y="-18" width="88" height="36" rx="3" fill="var(--obj)" opacity="0.12" stroke="var(--obj)" stroke-width="2"/>
-          <text x="0" y="70" class="svg-label small" text-anchor="middle">ASE — size mismatch (1 − IoU)</text>
-        </g>
-        <g transform="translate(535 75)">
-          <rect x="-60" y="-26" width="120" height="52" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 5"/>
-          <rect x="-60" y="-26" width="120" height="52" rx="3" fill="none" stroke="var(--obj)" stroke-width="2" transform="rotate(14)"/>
-          <path d="M 46 0 A 46 46 0 0 1 44.6 11.1" fill="none" stroke="var(--danger)" stroke-width="2.5"/>
-          <text x="0" y="70" class="svg-label small" text-anchor="middle">AOE — heading angle (rad)</text>
-        </g>
-      </svg>
+      <svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-labelledby="fig-tp-title">
+  <title id="fig-tp-title">One matched pair annotated with the four true-positive errors: the center offset, the yaw gap, the size mismatch, and the velocity gap between the two heading arrows.</title>
+  <rect x="8" y="8" width="644" height="224" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <g transform="translate(200 130)">
+    <rect x="-130" y="-46" width="260" height="92" rx="4" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+    <g transform="translate(18 12) rotate(9)">
+      <rect x="-112" y="-36" width="224" height="72" rx="4" fill="var(--obj)" opacity="0.13"/>
+      <rect x="-112" y="-36" width="224" height="72" rx="4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+    </g>
+    <circle cx="0" cy="0" r="3.5" fill="var(--ink2)"/>
+    <circle cx="18" cy="12" r="3.5" fill="var(--obj)"/>
+    <line x1="0" y1="0" x2="18" y2="12" stroke="var(--danger)" stroke-width="2.5"/>
+    <text x="-10" y="28" class="svg-label strong" text-anchor="end">ATE</text>
+    <line x1="0" y1="0" x2="176" y2="0" stroke="var(--ink2)" stroke-width="2"/>
+    <polygon points="176,-5 188,0 176,5" fill="var(--ink2)"/>
+    <line x1="18" y1="12" x2="170" y2="36" stroke="var(--obj)" stroke-width="2"/>
+    <polygon points="168,42 183,39 172,29" fill="var(--obj)"/>
+    <text x="196" y="26" class="svg-label strong">AVE</text>
+    <path d="M 128 12 A 110 110 0 0 1 126.6 29.2" fill="none" stroke="var(--danger)" stroke-width="2"/>
+    <text x="138" y="-8" class="svg-label strong">AOE</text>
+    <text x="-140" y="-58" class="svg-label strong" text-anchor="end">ASE</text>
+    <line x1="-138" y1="-54" x2="-116" y2="-40" stroke="var(--muted)" stroke-width="1.5"/>
+  </g>
+  <rect x="440" y="44" width="200" height="152" rx="8" fill="var(--chip-bg)" stroke="var(--line)"/>
+  <text x="540" y="68" class="svg-label strong" text-anchor="middle">reported per class</text>
+  <text x="456" y="94" class="svg-label small">ATE  center offset [m]</text>
+  <text x="456" y="118" class="svg-label small">AOE  yaw gap [rad]</text>
+  <text x="456" y="142" class="svg-label small">ASE  1 - size IoU</text>
+  <text x="456" y="166" class="svg-label small">AVE  velocity gap [m/s]</text>
+  <text x="330" y="222" class="svg-label small" text-anchor="middle">Averaged over true positives selected at configured recall operating points.</text>
+</svg>
       </div>
-      <figcaption>The three geometric error axes on matched boxes; AVE (not drawn) is the same idea for the
-      velocity vector, in m/s.</figcaption>
+      <figcaption>One matched pair annotated with the error axes: center offset (ATE), yaw difference (AOE), size
+    mismatch (ASE) and velocity difference (AVE, in m/s).</figcaption>
     </figure>
     <div class="chip-row">
       <span class="lead">Config</span>
@@ -934,7 +964,7 @@
     <figure class="explain">
       <div class="fig-wrap">
       <svg viewBox="0 0 560 170" width="560" height="170" role="img" aria-labelledby="fig-a2-title">
-        <title id="fig-a2-title">A ground-truth box and a predicted box share the same outline but point in opposite directions: corner displacement is near zero, yet the heading is reversed, so it counts as one flip.</title>
+        <title id="fig-a2-title">A ground-truth box and a predicted box that share the same outline but point in opposite directions: corner displacement is near zero, yet the heading is reversed, so it counts as one flip.</title>
         <g transform="translate(210 80)">
           <rect x="-70" y="-24" width="140" height="48" rx="4" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
           <rect x="-70" y="-24" width="140" height="48" rx="4" fill="var(--obj)" opacity="0.10"/>
@@ -1012,7 +1042,7 @@
   <!-- ------- 4.7 critical ------- -->
   <article class="metric" id="det-b1">
     <div class="metric-head">
-      <h3>Critical FP / FN — errors in the ego corridor</h3>
+      <h3>Critical FP / FN — errors in ego's path</h3>
       <span class="chip det3d">det3d</span>
     </div>
     <p class="explain">
@@ -1068,7 +1098,7 @@
     <figure class="explain">
       <div class="fig-wrap">
       <svg viewBox="0 0 560 250" width="560" height="250" role="img" aria-labelledby="fig-b1-title">
-        <title id="fig-b1-title">Two curves over the confidence threshold: critical false positives fall as the threshold rises while false negatives rise; both are read at the release operating point.</title>
+        <title id="fig-b1-title">Two curves over the confidence threshold: false positives in the collision set fall as the threshold rises while false negatives rise; both are read at the release operating point.</title>
         <line x1="70" y1="30" x2="70" y2="200" stroke="var(--line)" stroke-width="1.5"/>
         <line x1="70" y1="200" x2="500" y2="200" stroke="var(--line)" stroke-width="1.5"/>
         <polyline fill="none" stroke="var(--obj)" stroke-width="2.5"
@@ -1079,9 +1109,9 @@
         <circle cx="340" cy="149" r="5" fill="var(--obj)" stroke="var(--surface)" stroke-width="2"/>
         <circle cx="340" cy="124" r="5" fill="var(--ego)" stroke="var(--surface)" stroke-width="2"/>
         <text x="348" y="26" class="svg-label small">release operating point</text>
-        <text x="78" y="48" class="svg-label" fill="var(--obj)">FP in corridor — phantom brake</text>
+        <text x="78" y="48" class="svg-label" fill="var(--obj)">FP in collision set — phantom brake</text>
         <text x="78" y="62" class="svg-label small" fill="var(--obj)">(usability)</text>
-        <text x="492" y="48" class="svg-label" fill="var(--ego)" text-anchor="end">FN in corridor — missed object</text>
+        <text x="492" y="48" class="svg-label" fill="var(--ego)" text-anchor="end">FN in collision set — missed object</text>
         <text x="492" y="62" class="svg-label small" fill="var(--ego)" text-anchor="end">(safety)</text>
         <text x="285" y="226" class="svg-label" text-anchor="middle">confidence threshold τ →</text>
         <text x="26" y="115" class="svg-label" text-anchor="middle" transform="rotate(-90 26 115)">errors / frame</text>
@@ -1094,7 +1124,7 @@
       <span class="lead">Config</span>
       <span class="chip">plotted at confidence 0.5 (0.3 in appendix)</span>
       <span class="chip">match 2 m</span>
-      <span class="chip">critical = reachability TTC ≤ 4 s (no corridor filter)</span>
+      <span class="chip">critical = reachability TTC ≤ 4 s (criticality from TTC, not a slice)</span>
       <span class="chip">lower is better ↓</span>
     </div>
     <div class="chart-card">
@@ -1127,7 +1157,7 @@
     <figure class="explain">
       <div class="fig-wrap">
       <svg viewBox="0 0 700 300" width="700" height="300" role="img" aria-labelledby="fig-reach-title">
-      <title id="fig-reach-title">Bird's-eye worst-case reachability: ego expands to everything reachable at maximum speed under its tightest feasible left/right turn — constant-curvature arcs that keep their curvature right up to the road edge, where the drivable area hard-clips them with a sharp corner. A crossing pedestrian expands an isotropic disc; a stationary barrier stays put. TTC is the first time a set meets ego's region.</title>
+      <title id="fig-reach-title">Bird's-eye worst-case collision model: ego expands to everything it can reach at maximum speed under its tightest feasible left/right turn — constant-curvature arcs that keep their curvature right up to the road edge, where the drivable area hard-clips them with a sharp corner. A crossing pedestrian expands an isotropic disc; a stationary barrier stays put. TTC is the first time a set meets ego's region.</title>
       <defs><clipPath id="road-clip"><rect x="0" y="92" width="700" height="150"/></clipPath></defs>
       <rect x="0" y="46" width="700" height="46" fill="var(--chip-bg)" opacity="0.55"/>
       <text x="34" y="40" class="svg-label small">sidewalk</text>
@@ -1135,9 +1165,9 @@
       <text x="612" y="234" class="svg-label small" text-anchor="end">road (drivable)</text>
       <!-- reachable region + its arcs are drawn extending off-road, then hard-clipped to the road -->
       <g clip-path="url(#road-clip)">
-        <path d="M 90 167 C 150 167 200 108 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290 C 200 226 150 167 90 167 Z" fill="var(--ego)" opacity="0.16"/>
-        <path d="M 90 167 C 150 167 200 108 210 44" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
-        <path d="M 90 167 C 150 167 200 226 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 90 156 C 150 156 200 108 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290 C 200 226 150 178 90 178 Z" fill="var(--ego)" opacity="0.16"/>
+        <path d="M 90 156 C 150 156 200 108 210 44" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
+        <path d="M 90 178 C 150 178 200 226 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" opacity="0.75"/>
         <path d="M 210 44 C 316 66 372 116 372 167 C 372 218 316 268 210 290" fill="none" stroke="var(--ego)" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.75"/>
         <path d="M 90 167 L 372 167" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3" stroke-dasharray="4 4"/>
         <path d="M 90 167 Q 235 150 322 112" fill="none" stroke="var(--ego)" stroke-width="1" opacity="0.3"/>
@@ -1171,7 +1201,7 @@
     <figure class="explain">
       <div class="fig-wrap">
       <svg viewBox="0 0 700 210" width="700" height="210" role="img" aria-labelledby="fig-lead-title">
-      <title id="fig-lead-title">A lead vehicle at the same speed: ego and the lead both advance to the right by the same amount over two seconds, so the gap between them never closes and the reachable sets never overlap — time-to-collision is infinite.</title>
+      <title id="fig-lead-title">A lead vehicle at the same speed: ego and the lead both advance to the right by the same amount over two seconds, so the gap between them never closes and the collision sets never overlap — time-to-collision is infinite.</title>
       <rect x="0" y="66" width="700" height="96" fill="var(--chip-bg)" rx="4"/>
       <line x1="0" y1="114" x2="700" y2="114" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.4"/>
       <!-- t=now: ego + lead -->
@@ -1235,7 +1265,7 @@
       <div class="fig-wrap">
       <svg viewBox="0 0 660 232" width="660" height="232" role="img" aria-labelledby="fig-b2-scene-title">
         <title id="fig-b2-scene-title">Bird's-eye view: ego on a two-lane road. An oncoming vehicle closes fast (low time-to-collision, high weight); a lead vehicle at the same speed can never be caught (infinite time-to-collision, weight zero).</title>
-        <text x="330" y="24" class="svg-label strong" text-anchor="middle" fill="var(--accent-text)">weight follows reachability TTC — not distance</text>
+        <text x="330" y="24" class="svg-label strong" text-anchor="middle" fill="var(--accent-text)">weight follows collision TTC — not distance</text>
         <!-- road, two lanes -->
         <rect x="16" y="70" width="628" height="104" rx="6" fill="var(--chip-bg)"/>
         <line x1="16" y1="122" x2="644" y2="122" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="14 12" opacity="0.5"/>
@@ -1300,17 +1330,15 @@
         <line x1="60" y1="250" x2="440" y2="250" stroke="var(--line)" stroke-width="1.5"/>
         <line x1="60" y1="250" x2="440" y2="20" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 5"/>
         <text x="430" y="38" class="svg-label small" text-anchor="end">perfect calibration</text>
-        <!-- accuracy bars below the diagonal (overconfident): x=confidence bin, height=accuracy -->
         <rect x="130" y="210" width="34" height="40" fill="var(--accent)" opacity="0.7"/>
         <rect x="206" y="176" width="34" height="74" fill="var(--accent)" opacity="0.7"/>
         <rect x="282" y="150" width="34" height="100" fill="var(--accent)" opacity="0.7"/>
         <rect x="358" y="120" width="34" height="130" fill="var(--accent)" opacity="0.7"/>
-        <!-- gap markers -->
         <line x1="147" y1="210" x2="147" y2="197" stroke="var(--danger)" stroke-width="2"/>
         <line x1="299" y1="150" x2="299" y2="105" stroke="var(--danger)" stroke-width="2"/>
-        <text x="250" y="278" class="svg-label" text-anchor="middle">confidence (max softmax) →</text>
-        <text x="26" y="140" class="svg-label" text-anchor="middle" transform="rotate(-90 26 140)">accuracy</text>
-        <text x="315" y="74" class="svg-label strong" fill="var(--danger)" text-anchor="middle">gap = |acc − conf|</text>
+        <text x="250" y="278" class="svg-label" text-anchor="middle">confidence (detection score) -></text>
+        <text x="26" y="140" class="svg-label" text-anchor="middle" transform="rotate(-90 26 140)">precision</text>
+        <text x="315" y="74" class="svg-label strong" fill="var(--danger)" text-anchor="middle">gap = |acc - conf|</text>
       </svg>
       </div>
       <figcaption>Reliability diagram: the diagonal is perfect calibration; here "correct" means the
@@ -1344,20 +1372,20 @@
     <figure class="explain">
       <div class="fig-wrap">
       <svg viewBox="0 0 420 280" width="420" height="280" role="img" aria-labelledby="fig-det-e3-title">
-        <title id="fig-det-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one — a high-score false positive.</title>
+        <title id="fig-det-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one this metric measures.</title>
         <line x1="60" y1="30" x2="60" y2="230" stroke="var(--line)" stroke-width="1.5"/>
         <line x1="60" y1="230" x2="380" y2="230" stroke="var(--line)" stroke-width="1.5"/>
         <rect x="60" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
         <rect x="220" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
         <rect x="60" y="30" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
         <rect x="220" y="30" width="160" height="100" fill="var(--danger)" opacity="0.22"/>
-        <text x="140" y="185" class="svg-label small" text-anchor="middle">low-score &amp; correct</text>
+        <text x="140" y="185" class="svg-label small" text-anchor="middle">uncertain &amp; correct</text>
         <text x="300" y="185" class="svg-label small" text-anchor="middle">confident &amp; correct</text>
-        <text x="140" y="85" class="svg-label small" text-anchor="middle">low-score FP</text>
+        <text x="140" y="85" class="svg-label small" text-anchor="middle">uncertain &amp; wrong</text>
         <text x="300" y="80" class="svg-label strong" text-anchor="middle" fill="var(--danger)">confident</text>
-        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">confident FP</text>
-        <text x="220" y="256" class="svg-label" text-anchor="middle">detection score →</text>
-        <text x="26" y="130" class="svg-label" text-anchor="middle" transform="rotate(-90 26 130)">false positive ← → true positive</text>
+        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">&amp; wrong</text>
+        <text x="220" y="256" class="svg-label" text-anchor="middle">confidence -></text>
+        <text x="26" y="130" class="svg-label" text-anchor="middle" transform="rotate(-90 26 130)">wrong <- -> correct</text>
       </svg>
       </div>
       <figcaption>Of the false positives, the confident-error rate is the fraction with a high detection score — the confident
@@ -1433,23 +1461,46 @@
     </p>
     <figure class="explain">
       <div class="fig-wrap">
-      <svg viewBox="0 0 560 190" width="560" height="190" role="img" aria-labelledby="fig-iou-title">
-        <title id="fig-iou-title">Two overlapping point sets: points predicted as a class and points truly of that class; IoU is the intersection over the union.</title>
-        <ellipse cx="230" cy="95" rx="150" ry="70" fill="var(--ego)" opacity="0.13"/>
-        <ellipse cx="330" cy="95" rx="150" ry="70" fill="var(--accent)" opacity="0.13"/>
-        <ellipse cx="230" cy="95" rx="150" ry="70" fill="none" stroke="var(--ego)" stroke-width="1.5"/>
-        <ellipse cx="330" cy="95" rx="150" ry="70" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
-        <text x="150" y="52" class="svg-label" fill="var(--ego)">predicted "road"</text>
-        <text x="412" y="52" class="svg-label" fill="var(--accent-text)" text-anchor="end">truly road</text>
-        <text x="280" y="100" class="svg-label strong" text-anchor="middle">∩</text>
-        <text x="280" y="176" class="svg-label small" text-anchor="middle">IoU = points in both / points in either — false paint and misses both shrink it</text>
-      </svg>
+      <svg viewBox="0 0 660 230" width="660" height="230" role="img" aria-labelledby="fig-iou-title">
+  <title id="fig-iou-title">The point sets of one class as two overlapping regions: points in both are true positives, predicted-only points are false positives, ground-truth-only points are false negatives.</title>
+  <rect x="8" y="8" width="644" height="214" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">Point sets of one class</text>
+  <text x="200" y="56" class="svg-label small" text-anchor="middle">ground truth region</text>
+  <rect x="120" y="64" width="230" height="110" rx="18" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <rect x="215" y="88" width="230" height="104" rx="18" fill="var(--obj)" opacity="0.07"/>
+  <rect x="215" y="88" width="230" height="104" rx="18" fill="none" stroke="var(--obj)" stroke-width="2"/>
+  <text x="400" y="82" class="svg-label small" fill="var(--obj)" text-anchor="middle">prediction</text>
+  <circle cx="140" cy="84" r="3" fill="none" stroke="var(--ink2)"/>
+  <circle cx="164" cy="110" r="3" fill="none" stroke="var(--ink2)"/>
+  <circle cx="188" cy="84" r="3" fill="none" stroke="var(--ink2)"/>
+  <circle cx="140" cy="136" r="3" fill="none" stroke="var(--ink2)"/>
+  <circle cx="188" cy="136" r="3" fill="none" stroke="var(--ink2)"/>
+  <circle cx="164" cy="160" r="3" fill="none" stroke="var(--ink2)"/>
+  <circle cx="240" cy="102" r="3" fill="var(--accent)"/>
+  <circle cx="264" cy="126" r="3" fill="var(--accent)"/>
+  <circle cx="288" cy="102" r="3" fill="var(--accent)"/>
+  <circle cx="312" cy="126" r="3" fill="var(--accent)"/>
+  <circle cx="336" cy="102" r="3" fill="var(--accent)"/>
+  <circle cx="240" cy="150" r="3" fill="var(--accent)"/>
+  <circle cx="288" cy="150" r="3" fill="var(--accent)"/>
+  <circle cx="336" cy="150" r="3" fill="var(--accent)"/>
+  <circle cx="376" cy="112" r="3" fill="var(--obj)"/>
+  <circle cx="400" cy="140" r="3" fill="var(--obj)"/>
+  <circle cx="424" cy="112" r="3" fill="var(--obj)"/>
+  <circle cx="400" cy="168" r="3" fill="var(--obj)"/>
+  <text x="164" y="196" class="svg-label small" text-anchor="middle">missed (FN)</text>
+  <text x="288" y="212" class="svg-label small" fill="var(--accent-text)" text-anchor="middle">correct (TP)</text>
+  <text x="400" y="212" class="svg-label small" fill="var(--obj)" text-anchor="middle">spurious (FP)</text>
+  <text x="470" y="112" class="svg-label small">IoU = TP / (TP + FP + FN)</text>
+  <text x="470" y="138" class="svg-label small">precision = TP / (TP + FP)</text>
+  <text x="470" y="164" class="svg-label small">recall = TP / (TP + FN)</text>
+</svg>
       </div>
     </figure>
     <div class="chip-row">
       <span class="lead">Config</span>
       <span class="chip">road slice margin 0.2 m, cut inward</span>
-      <span class="chip">critical = reachability TTC ≤ 4 s (no corridor filter)</span>
+      <span class="chip">critical = reachability TTC ≤ 4 s (criticality from TTC, not a slice)</span>
       <span class="chip">higher is better ↑</span>
     </div>
     <div class="chart-card">
@@ -1467,6 +1518,7 @@
       <div class="chart-card"><h4>Whole scene <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-whole"></div></div>
       <div class="chart-card"><h4>Road slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-road"></div></div>
       <div class="chart-card"><h4>Corridor slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-corridor"></div></div>
+      <div class="chart-card"><h4>Collision-area slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-collision"></div></div>
     </div>
   </article>
 
@@ -1509,9 +1561,9 @@
         <text x="562" y="42" class="svg-label strong" text-anchor="middle">dense cluster — still 1 phantom</text>
       </svg>
       </div>
-      <figcaption>Every connected group is one cluster: a lone point and a dense blob each count as a single
-      phantom, so the cluster count weights obstacles by <em>existence</em>, not by point count (that is what
-      the error rate does). Here there are <b>four</b> clusters — three single-point ones and the blob.</figcaption>
+      <figcaption>The two point sets of one class — points <em>predicted</em> as the class and points <em>truly</em> of
+    the class — overlap in the true positives; IoU is the intersection over the union of the two sets,
+    and precision / recall read from the same three regions.</figcaption>
     </figure>
     <div class="chip-row">
       <span class="lead">Config</span>
@@ -1694,7 +1746,7 @@
     <figure class="explain">
       <div class="fig-wrap">
       <svg viewBox="0 0 420 280" width="420" height="280" role="img" aria-labelledby="fig-e3-title">
-        <title id="fig-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one the confident-error rate measures.</title>
+        <title id="fig-e3-title">A two-by-two of correctness versus confidence; the confident-and-wrong quadrant is the dangerous one this metric measures.</title>
         <line x1="60" y1="30" x2="60" y2="230" stroke="var(--line)" stroke-width="1.5"/>
         <line x1="60" y1="230" x2="380" y2="230" stroke="var(--line)" stroke-width="1.5"/>
         <rect x="60" y="130" width="160" height="100" fill="var(--accent)" opacity="0.12"/>
@@ -1705,7 +1757,7 @@
         <text x="300" y="185" class="svg-label small" text-anchor="middle">confident &amp; correct</text>
         <text x="140" y="85" class="svg-label small" text-anchor="middle">uncertain &amp; wrong</text>
         <text x="300" y="80" class="svg-label strong" text-anchor="middle" fill="var(--danger)">confident</text>
-        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">&amp; wrong → conf. error</text>
+        <text x="300" y="96" class="svg-label strong" text-anchor="middle" fill="var(--danger)">&amp; wrong</text>
         <text x="220" y="256" class="svg-label" text-anchor="middle">confidence →</text>
         <text x="26" y="130" class="svg-label" text-anchor="middle" transform="rotate(-90 26 130)">wrong ← → correct</text>
       </svg>
@@ -1829,6 +1881,7 @@ const RANGES = [
 const DET_ROAD = "region_road";
 const SEG_ROAD = "region_road";
 const COR = "corridor";
+const COL = "collision";
 // Per-class taxonomies (trained classes) and behaviour-group taxonomies (folded).
 // The taxonomy tab switches which the charts read: per-class keys live in the
 // det3d / seg3d metric buckets, grouped keys in det3d_grouped / seg3d_grouped.
@@ -1995,7 +2048,7 @@ const CHART_SPECS = [
     { label: "max |·| — whole scene", key: "mnsurf_absmax", slice: "" },
   ]},
   { el: "det-b1-fn", task: "det3d", rows: () => {
-    // Missed object in the corridor, per class — a missed pedestrian weighs on its own.
+    // Missed object in ego's path, per class — a missed pedestrian weighs on its own.
     const rows = [{ label: "overall", key: "critical_fn_0p5m", slice: "", strong: true }];
     for (const c of detClasses()) rows.push({ label: c, key: "critical_fn_" + c + "_0p5m", slice: "" });
     return rows;
@@ -2037,6 +2090,7 @@ const CHART_SPECS = [
   { el: "seg-trio-whole", task: "seg3d", domainMax: 1, rows: () => segTrioRows("") },
   { el: "seg-trio-road", task: "seg3d", domainMax: 1, rows: () => segTrioRows(SEG_ROAD) },
   { el: "seg-trio-corridor", task: "seg3d", domainMax: 1, rows: () => segTrioRows(COR) },
+  { el: "seg-trio-collision", task: "seg3d", domainMax: 1, rows: () => segTrioRows(COL) },
   { el: "seg-d1-rate", task: "seg3d", rows: () => {
     // Overall (whole + road) plus every class on the road slice.
     const rows = [
@@ -2074,6 +2128,7 @@ const CHART_SPECS = [
     { label: "whole scene", key: "confident_error_rate", slice: "" },
     { label: "road", key: "confident_error_rate", slice: SEG_ROAD },
     { label: "corridor", key: "confident_error_rate", slice: COR },
+    { label: "collision area", key: "confident_error_rate", slice: COL },
   ]},
 ];
 
@@ -2297,6 +2352,7 @@ const CONFUSION_SLICES = [
   { id: "whole", label: "Whole scene" },
   { id: "road", label: "Road" },
   { id: "corridor", label: "Corridor" },
+  { id: "collision", label: "Collision area" },
 ];
 const CONFUSION_VIEWS = [
   { id: "current", label: "Current" },
@@ -2324,6 +2380,7 @@ function confusionClasses(task) {
 function confusionSliceName(task, sliceId) {
   if (sliceId === "road") return task === "det3d" ? DET_ROAD : SEG_ROAD;
   if (sliceId === "corridor") return COR;
+  if (sliceId === "collision") return COL;
   return "";
 }
 /* One model's matrix: raw counts, per-row totals and the row-normalized shares.

@@ -66,7 +66,11 @@ DET_SPEC = {"bundle": "0.1.0", "metrics": {
         "max_lateral_accel_mps2": 3.0}},
     "calibration_error": {"version": "0.1", "params": {"num_bins": 15}},
     "confusion_matrix": {"version": "0.1", "params": {"match_threshold_m": 2.0, "min_score": 0.1,
-        "matched_only": True}}}}
+        "matched_only": True}},
+    "corridor_filter": {"version": "0.1", "params": {"width_m": 3.0}},
+    "collision_filter": {"version": "0.1", "params": {"horizon_s": 4.0, "dt_s": 0.1,
+        "max_lateral_accel_mps2": 3.0, "max_speed_mps": 16.7, "ego_body_m": 1.0,
+        "road": ["road", "road_shoulder", "crosswalk", "drivable_area", "intersection_area", "crosswalk_polygon"]}}}}
 SEG_SPEC = {"bundle": "0.1.0", "metrics": {
     "error_clusters": {"version": "0.1", "params": {"cluster_radius_m": 0.5, "min_cluster_points": 1}},
     "tolerant_error": {"version": "0.1", "params": {"radius_m": 0.2}},
@@ -74,8 +78,16 @@ SEG_SPEC = {"bundle": "0.1.0", "metrics": {
     "entropy_auroc": {"version": "0.1", "params": {"num_bins": 8192}},
     "confident_error": {"version": "0.1", "params": {"entropy_threshold": 0.3}},
     "region_filter": {"version": "0.1", "params": {"road_margin_m": 0.2,
+        "road": ["road", "road_shoulder", "crosswalk", "drivable_area", "intersection_area", "crosswalk_polygon"]}},
+    "corridor_filter": {"version": "0.1", "params": {"width_m": 3.0}},
+    "collision_filter": {"version": "0.1", "params": {"horizon_s": 4.0, "dt_s": 0.1,
+        "max_lateral_accel_mps2": 3.0, "max_speed_mps": 16.7, "ego_body_m": 1.0,
         "road": ["road", "road_shoulder", "crosswalk", "drivable_area", "intersection_area", "crosswalk_polygon"]}}}}
-BOTH_SPEC = {"bundle": "0.1.0", "metrics": {**DET_SPEC["metrics"], **SEG_SPEC["metrics"]}}
+BOTH_SPEC = {"bundle": "0.1.0", "metrics": {**DET_SPEC["metrics"], **SEG_SPEC["metrics"],
+    # Joint-only: the detection GT rides in seg_frames, so the partial-detection
+    # score exists only in the merged det3d+seg3d evaluation.
+    "partial_detection": {"version": "0.1", "params": {"half_saturation": 1.0, "min_points": 1,
+        "box_classes": ["motorcycle", "bicycle", "pedestrian", "traffic_cone"]}}}}
 
 
 def read_run(db_path: str, run_id: str) -> dict[str, float | None]:
