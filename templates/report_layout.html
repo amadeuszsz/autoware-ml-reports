@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PTv3 Multi-Head — Model Report</title>
+<title>Model report</title>
 <style>
   :root {
     --bg: #F6F7F5;
@@ -29,6 +29,8 @@
     --series-2: #eb6834;
     --series-3: #1baf7a;
     --series-4: #eda100;
+    /* magnitude ramp (confusion matrix, distribution bars) — its own hue, never an identity hue */
+    --seq: #A23C8C;
     --grid: #e1e0d9;
     --good: #006300;
   }
@@ -56,6 +58,7 @@
       --series-2: #d95926;
       --series-3: #199e70;
       --series-4: #c98500;
+      --seq: #C86BAC;
       --grid: #2c2c2a;
       --good: #0ca30c;
     }
@@ -83,6 +86,7 @@
     --series-2: #d95926;
     --series-3: #199e70;
     --series-4: #c98500;
+    --seq: #C86BAC;
     --grid: #2c2c2a;
     --good: #0ca30c;
   }
@@ -216,7 +220,7 @@
   .dist-row { display: grid; grid-template-columns: 170px 1fr 74px; align-items: center; gap: 8px; margin: 3px 0; font-size: 0.82rem; }
   .dist-row .lbl { color: var(--ink2); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dist-track { background: var(--code-bg); border-radius: 4px; height: 14px; overflow: hidden; }
-  .dist-fill { height: 100%; background: var(--series-1); border-radius: 4px; }
+  .dist-fill { height: 100%; background: var(--seq); border-radius: 4px; }
   .dist-row .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink2); }
   .scene-list { margin: 6px 0; padding-left: 0; list-style: none; font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--ink2); }
   .scene-db { margin: 8px 0; break-inside: avoid; }
@@ -287,21 +291,29 @@
   footer.doc { margin-top: 72px; padding-bottom: 56px; border-top: 1px solid var(--line); padding-top: 20px; font-size: 0.82rem; color: var(--muted); }
   footer.doc p { max-width: none; }
 
+  .tax-block h4 { margin: 14px 0 6px; font-size: 0.9rem; }
+  .tax-block ul { margin: 6px 0; padding-left: 18px; font-size: 0.86rem; color: var(--ink2); }
+  .tax-block li { margin: 2px 0; }
+  .ts-stat .v.text { font-size: 0.95rem; font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
   @media print {
     body { background: #fff; }
     nav.toc, .controls { display: none; }
     .metric, .chart-card { break-inside: avoid; box-shadow: none; }
     .appendix-wrap { max-height: none; overflow: visible; }
   }
+  .changes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px 32px; margin-top: 10px; }
+  .changes-grid h3 { margin: 0 0 6px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .changes-grid ul { margin: 0; padding-left: 18px; }
+  .changes-grid li { margin: 4px 0; }
 </style>
 </head>
 <body>
 
 <header class="doc">
-  <div class="eyebrow">autoware-ml · multi-head PTv3 model report</div>
-  <h1>PTv3 Multi-Head — Model Report</h1>
+  <div class="eyebrow">autoware-ml · model report</div>
+  <h1 data-bind="report-title">Model report</h1>
   <p class="standfirst explain">
-    Evaluation of the multi-head PTv3 model: where each build comes from, how it scores on the metrics we
+    Evaluation of one model release: where each build comes from, how it scores on the metrics we
     gate and diagnose with, and how releases compare — detection and segmentation, whole-scene and inside
     the areas that matter for driving. Pick a <b>test set</b> at the top; every section below follows it.
   </p>
@@ -316,6 +328,7 @@
   <nav class="toc" aria-label="Table of contents">
     <span class="sec-label">Contents</span>
     <ol>
+      <li><a href="#changes">Release notes</a></li>
       <li><a href="#testset">Test set</a></li>
       <li><a href="#lineage">Release lineage</a></li>
       <li><a href="#reading">How to read this report</a></li>
@@ -355,6 +368,17 @@
   </div>
 </div>
 
+<!-- ============================================================ release notes -->
+<section id="changes" hidden>
+  <div class="sec-label">Release notes</div>
+  <h2>What changed in <span data-bind="changes-release">this release</span></h2>
+  <p class="standfirst" id="changes-headline"></p>
+  <div class="changes-grid">
+    <div><h3>Model</h3><ul id="changes-model"></ul></div>
+    <div><h3>Test</h3><ul id="changes-test"></ul></div>
+  </div>
+</section>
+
 <!-- ============================================================ 0 -->
 <section id="testset">
   <div class="sec-label">Section 1</div>
@@ -362,10 +386,16 @@
   <p class="explain">
     The evaluation dataset the numbers below were computed on. Test sets are <b>versioned</b> — a model is
     only comparable against another evaluated on the same test set at the same version; changing the frames,
-    scenes or labels bumps the version.
+    scenes or labels bumps the version. The label vocabulary a release was scored on is part of its test
+    set: the per-class and behaviour-group rows of every chart below follow the vocabulary listed here.
   </p>
   <div class="ts-stats" id="ts-stats"></div>
+  <p class="explain" id="ts-notes" hidden></p>
   <div id="ts-distributions"></div>
+  <details id="ts-taxonomy-wrap">
+    <summary>Label vocabulary — classes and behaviour groups of this test set</summary>
+    <div class="body tax-block" id="ts-taxonomy"></div>
+  </details>
   <details id="ts-scenes-wrap">
     <summary>Scenes in this test set (<span id="ts-scene-count">0</span>)</summary>
     <div class="body">
@@ -379,13 +409,13 @@
   <div class="sec-label">Section 2</div>
   <h2>Release lineage</h2>
   <p class="explain">
-    Every model in this report is pinned to the exact code, artifacts and deployment target it belongs to.
+    Every model in this report is pinned to the exact code and deployment target it belongs to.
     The newest release is listed last; its bars are always the last color in every chart.
   </p>
   <div class="table-wrap">
     <table class="registry-table">
       <thead>
-        <tr><th>Model</th><th>Date</th><th>Trained at (autoware-ml)</th><th>Artifacts</th><th>Compatible autoware_universe</th><th>Eval config</th></tr>
+        <tr><th>Model</th><th>Date</th><th>Trained at (autoware-ml)</th><th>Artifacts</th><th>Compatible autoware_universe</th><th>Eval config</th><th>Metric spec</th></tr>
       </thead>
       <tbody id="registry-body"></tbody>
     </table>
@@ -394,54 +424,61 @@
     <summary>How to add a release to this report</summary>
     <div class="body">
       <p>All data lives inline — the <code>&lt;script id="report-data"&gt;</code> block at the bottom holds
-      three <b>test sets</b> (Detection, Segmentation, Detection + Segmentation) with no data. Everything on
-      the page renders from that block; the top tabs switch test set, and each test set carries its own
-      dataset, versioned metric-spec and models.</p>
+      the <b>test sets</b>. Everything on the page renders from that block; the top tabs switch test set, and
+      each test set carries its own label vocabulary, dataset, versioned metric-spec and models.</p>
       <div class="formula" style="white-space: pre">{
   "repo_url": "https://github.com/&lt;org&gt;/autoware-ml",   // base for commit links (optional)
   "test_sets": [
     {
-      "id": "det3d", "label": "det3d", "version": "0.1",
-      "tasks": ["det3d"],                        // which sections show (det3d / seg3d)
+      "id": "det3d-seg3d-j6gen2", "label": "det3d-seg3d-j6gen2-v0.1.0", "version": "0.1.0",
+      "tasks": ["det3d", "seg3d"],               // which sections show (det3d / seg3d)
+      "notes": "…",                              // optional free text shown in Section 1
+      "taxonomy": {                              // the label vocabulary the release was scored on
+        "det3d": { "classes": ["car", "truck", "…"],
+                   "groups": { "grouped_vehicle": ["car", "truck", "…"], "…": [] } },
+        "seg3d": { "classes": ["…"], "groups": { "…": [] } }
+      },
       "dataset": {
-        "num_frames": 5910, "num_scenes": 244, "num_objects": 89000,
-        "sources": [                               // one entry per source DB, scenes nested under it
-          { "db": "db_j6gen2_v1", "scenes": ["db_j6gen2_v1/&lt;uuid&gt;/0", "..."] },
-          { "db": "db_largebus_v1", "scenes": ["db_largebus_v1/&lt;uuid&gt;/0", "..."] }
+        "database_version": "T4Dataset-…", "num_frames": 140, "num_scenes": 7,
+        "num_objects": 8781, "num_points": 55000000,
+        "sources": [                               // one entry per source dataset, scenes nested under it
+          { "db": "semseg_batch1_fixed_v1", "scenes": ["semseg_batch1_fixed_v1/&lt;uuid&gt;/1", "…"] }
         ],
         "distributions": [
           { "title": "GT objects per class", "unit": "objects",
-            "bars": [ { "label": "car", "value": 41892 }, { "label": "pedestrian", "value": 18540 } ] }
+            "bars": [ { "label": "car", "value": 3480 }, { "label": "pedestrian", "value": 1295 } ] }
         ]
       },
       "metric_spec": {
-        "bundle": "1.0.0",
-        "metrics": { "corner_error": { "version": "1.0", "params": { "tp_threshold_m": 2.0 } } }
+        "bundle": "0.2.0",
+        "metrics": { "corner_error": { "version": "0.1", "params": { "tp_threshold_m": 2.0 } } }
       },
       "models": [
-        { "name": "…", "date": "…",
-          "model": "PTv3",                       // model identity → base chart colour (releases share it)
-          "test_set_version": "0.1",             // optional; if its MAJOR differs from this test set's, muted + flagged
-          "repo_commit": "a1b2c3d",             // commit the model was trained at → header commit link + lineage
+        { "name": "v0.1.0", "date": "2026-09-08",
+          "model": "LitePT multi-head",          // model identity → base chart colour (releases share it)
+          "test_set_version": "0.1.0",           // if its MAJOR differs from this test set's, muted + flagged
+          "metric_spec_bundle": "0.2.0",         // the spec this release was computed with
+          "repo_commit": "a1b2c3d",             // commit the model was evaluated at → header commit link + lineage
           "repo_commit_url": "…",               // optional; else built from repo_url + /commit/&lt;hash&gt;
-          "artifacts_url": "…", "universe_commit": "…", "universe_commit_url": "…",
+          "artifacts_url": "…", "checkpoint": "…", "universe_commit": "…", "universe_commit_url": "…",
           "eval_config": "…",
-          "metrics": { "det3d": { "mAP_0m_121m": 0.63, "…": 0 }, "seg3d": {} } }
+          "metrics": { "det3d": { "mAP_0m_121m": 0.63, "…": 0 }, "det3d_grouped": {}, "seg3d": {},
+                       "seg3d_grouped": {}, "det3d_visible": {}, "det3d_overall": {}, "segdet3d": {} } }
       ]
     }
   ]
 }</div>
       <ol>
         <li><b>Export the metric report</b> — the flat <code>key → value</code> dict the suites produce,
-            keyed exactly as emitted (<code>[filter/]name_range</code>). Convert every <code>NaN</code> to
-            <code>null</code> (JSON has no NaN; the report renders it as “–”, meaning no support there).</li>
+            keyed exactly as emitted (<code>[filter/]name_range</code>), one bucket per suite prefix.
+            Convert every <code>NaN</code> to <code>null</code> (JSON has no NaN; the report renders it as
+            “–”, meaning no support there).</li>
         <li><b>Pick the test set</b> the run belongs to and append a model object to its <code>models</code>
-            array (name, date, commit links, artifacts, eval config, and the
-            <code>metrics.det3d</code> / <code>metrics.seg3d</code> dicts). A test set's <code>tasks</code>
-            controls which metric sections appear for it.</li>
-        <li><b>Fill the test set's <code>dataset</code></b> once (frames, scenes, per-class distribution) and
-            its <code>metric_spec</code> once (shared by that set's models). Versions travel by metric
-            <b>name</b>, never a catalog id.</li>
+            array (name, date, commit links, artifacts, eval config, and the metric buckets). A test set's
+            <code>tasks</code> controls which metric sections appear for it.</li>
+        <li><b>Fill the test set's <code>taxonomy</code></b> (the classes and behaviour groups the release was
+            scored on), its <code>dataset</code> (frames, scenes, per-class distribution) and its
+            <code>metric_spec</code>. Versions travel by metric <b>name</b>, never a catalog id.</li>
         <li>Everything updates from that block: the test-set tabs and info, the lineage row, a bar in every
             chart, a column in the appendix, and the headline deltas comparing newest to previous.</li>
         <li>Keep at most <b>4</b> models per test set; fold older releases out when adding a fifth — series
@@ -453,12 +490,14 @@
       <p><b>Producing the block automatically.</b> Rather than hand-editing, keep each release as a JSON file
       against the versioned report-data schema (documented in the metrics proposal),
       then build a report by parsing one or more of them into a copy of this layout. Files are read
-      <b>in order</b>, so passing several releases plots them side by side for comparison (the last is the
-      current one):</p>
+      <b>in order</b>, so passing several releases plots them side by side for comparison; the last is the
+      current release and defines the test set the page describes (its vocabulary, dataset and metric spec),
+      while older releases show “–” wherever they carry no key for a row:</p>
       <div class="formula" style="white-space: pre">python scripts/build_report.py --layout templates/report_layout.html \
-    --out report.html  v0.1.json v0.2.json v0.3.json</div>
+    --out report.html  v0.0.1.json v0.1.0.json</div>
     </div>
   </details>
+</section>  </details>
 </section>
 
 <!-- ============================================================ 2 -->
@@ -490,8 +529,8 @@
         the model is trained and optimised against.</li>
     <li><b>Behaviour groups</b> — classes whose confusion does not change how the vehicle drives are folded
         into one group before scoring, so intra-group confusion becomes a hit: a bus predicted as a truck
-        is correct for <code>vehicle</code>. Groups are prefixed <code>grouped_</code> (even singletons such
-        as <code>grouped_pedestrian</code>, which never fold into anything). This view answers "does the
+        is correct for <code>grouped_vehicle</code>. Group names carry the <code>grouped_</code> prefix; the
+        groups of the active test set and their members are listed in Section 1. This view answers "does the
         model see the <em>kind</em> of thing that matters for the driving decision", separate from whether
         it names it exactly.</li>
   </ul>
@@ -590,7 +629,7 @@
       <text x="330" y="236" class="svg-label small" text-anchor="middle">erosion applies to the union of ALL regions — never per region</text>
     </svg>
     </div>
-    <figcaption>The <b>segmentation border margin</b> (<code>margin: 0.2, expand: false</code>) excludes the
+    <figcaption>The <b>segmentation border margin</b> (<code>margin: -0.2</code>, a negative margin cuts inward) excludes the
     noisy strip along the <b>outer</b> border of the mapped surface. Because the erosion is applied to the
     union of all regions — never per region — the internal road ↔ walkway border keeps its points on both
     sides, so no dead gap opens between adjacent regions. Detection region filters use
@@ -719,12 +758,14 @@
   <h2>Detection metrics <span class="chip det3d">det3d</span></h2>
   <p class="explain">
     All detection metrics share one matching backbone: predictions are greedily matched to ground truth by
-    BEV center distance, and every metric below reads those matches. Ground truth uses the canonical
-    7-class taxonomy after name mapping and the geometric truck+trailer merge.
+    BEV center distance, and every metric below reads those matches. Ground truth carries the detection
+    classes of the database taxonomy the test set is bound to (Section 1 lists them with their behaviour
+    groups); boxes are filtered by lidar point count and per-class range before scoring.
   </p>
   <div class="chip-row">
     <span class="lead">Shared config</span>
-    <span class="chip">classes: car · truck · bus · bicycle · pedestrian · traffic_cone · barrier</span>
+    <span class="chip" data-bind="det-classes">classes: —</span>
+    <span class="chip" data-bind="det-groups">behaviour groups: —</span>
     <span class="chip">eval range 121 m per class</span>
     <span class="chip">GT min lidar points ≥ 2</span>
     <span class="chip">match: BEV center distance</span>
@@ -787,7 +828,7 @@
     </div>
     <div class="chart-card">
       <h4>Per-class AP — road slice <span class="unit">higher ↑</span></h4>
-      <div data-chart="det-ap-class-road"></div>
+      <div data-chart="det-ap-class-road" data-slot-note="No support in this run: the road slice is empty because these scenes ship no lanelet map."></div>
     </div>
   </article>
 
@@ -1129,11 +1170,11 @@
     </div>
     <div class="chart-card">
       <h4>Critical FN / frame — missed object, per class <span class="unit">count / frame at conf 0.5, lower ↓</span></h4>
-      <div data-chart="det-b1-fn"></div>
+      <div data-chart="det-b1-fn" data-slot-note="No support in this run: the collision metrics need a lanelet map per scene and every frame of this test set is map-less."></div>
     </div>
     <div class="chart-card">
       <h4>Critical FP / frame — phantom brake, per class <span class="unit">count / frame at conf 0.5, lower ↓</span></h4>
-      <div data-chart="det-b1-fp"></div>
+      <div data-chart="det-b1-fp" data-slot-note="No support in this run: the collision metrics need a lanelet map per scene and every frame of this test set is map-less."></div>
     </div>
     <p class="explain" style="font-size:0.9rem; color:var(--ink2);">
       Per class, following the taxonomy tab — a missed pedestrian weighs on its own, apart from a missed cone.
@@ -1300,7 +1341,59 @@
     </div>
     <div class="chart-card">
       <h4>Collision-weighted mAP <span class="unit">0–1, higher ↑</span></h4>
-      <div data-chart="det-b2" data-slot-note="Not measured in this run — CollisionWeightedMeanAP is not enabled in the evaluation config; the panel stays so runs that do enable it land in the same place."></div>
+      <div data-chart="det-b2" data-slot-note="No support in this run: the collision metrics need a lanelet map per scene and every frame of this test set is map-less."></div>
+    </div>
+  </article>
+
+  <!-- ------- occlusion split ------- -->
+  <article class="metric" id="det-b3">
+    <div class="metric-head">
+      <h3>Occlusion-aware recall split</h3>
+      <span class="chip det3d">det3d</span>
+    </div>
+    <p class="explain">
+      A miss on an object that returned no lidar point is a physics problem; a miss on a visible object is a
+      model problem. The same detection suite runs twice with different ground-truth point-count floors:
+      the <b>visible</b> split keeps boxes with at least one lidar point, the <b>overall</b> split keeps every
+      box including fully occluded ones. The gap between the two APs is the occlusion effect on recall; the
+      release number stays the main suite with its floor of two points.
+    </p>
+    <figure class="explain">
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-labelledby="fig-occl-title">
+  <title id="fig-occl-title">Bird's-eye scene: a ground-truth box behind an occluder receives no sensor returns and is occluded, a box outside the shadow collects hits and is visible.</title>
+  <rect x="8" y="8" width="644" height="224" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">A box behind an occluder returns no points</text>
+  <text x="30" y="64" class="svg-label small">visible suite keeps hit boxes, the overall suite keeps all,</text>
+  <text x="30" y="80" class="svg-label small">the recall gap between them is the occlusion effect</text>
+  <polygon points="180,118 640,48 640,230 180,150" fill="var(--muted)" opacity="0.12"/>
+  <rect x="36" y="118" width="46" height="30" rx="4" fill="var(--ego)"/>
+  <text x="59" y="166" class="svg-label small" text-anchor="middle">ego</text>
+  <rect x="180" y="118" width="90" height="32" fill="var(--ink2)" opacity="0.25"/>
+  <rect x="180" y="118" width="90" height="32" fill="none" stroke="var(--ink2)"/>
+  <text x="225" y="110" class="svg-label small" text-anchor="middle">occluder</text>
+  <rect x="480" y="116" width="60" height="36" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="510" y="172" class="svg-label small" text-anchor="middle">0 points -&gt; occluded</text>
+  <rect x="300" y="178" width="60" height="36" rx="3" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <circle cx="300" cy="184" r="2.5" fill="var(--accent)"/>
+  <circle cx="300" cy="192" r="2.5" fill="var(--accent)"/>
+  <circle cx="300" cy="200" r="2.5" fill="var(--accent)"/>
+  <circle cx="300" cy="208" r="2.5" fill="var(--accent)"/>
+  <text x="330" y="228" class="svg-label small" text-anchor="middle">hits -&gt; visible</text>
+</svg>
+      </div>
+      <figcaption>A box behind an occluder returns no lidar point: the visible split keeps boxes with a hit, the overall split keeps every box, and the AP gap between them is the occlusion effect.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">visible: GT min lidar points ≥ 1</span>
+      <span class="chip">overall: GT min lidar points ≥ 0</span>
+      <span class="chip">per trained class only, no behaviour-group twin</span>
+      <span class="chip">higher is better ↑</span>
+    </div>
+    <div class="chart-card">
+      <h4>Per-class AP — visible vs overall <span class="unit">AP, 0–1, higher ↑</span></h4>
+      <div data-chart="det-b3"></div>
     </div>
   </article>
 
@@ -1419,6 +1512,41 @@
       previous</b> swaps the cell values for the change since the previous release, coloured green where the
       model improved and red where it regressed.
     </p>
+    <figure class="explain">
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-labelledby="fig-dcm-title">
+  <title id="fig-dcm-title">A predicted car box matched onto a ground-truth truck votes one count into the off-diagonal truck-as-car cell of the class confusion matrix.</title>
+  <rect x="8" y="8" width="644" height="224" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">Matched pairs vote a confusion cell</text>
+  <rect x="50" y="104" width="200" height="60" rx="4" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="150" y="186" class="svg-label small" text-anchor="middle">ground truth: truck</text>
+  <rect x="70" y="112" width="110" height="44" rx="4" fill="var(--obj)" opacity="0.13"/>
+  <rect x="70" y="112" width="110" height="44" rx="4" fill="none" stroke="var(--obj)" stroke-width="2"/>
+  <text x="125" y="96" class="svg-label small" fill="var(--obj)" text-anchor="middle">predicted: car</text>
+  <line x1="270" y1="134" x2="392" y2="140" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <polygon points="391,134 404,142 393,148" fill="var(--muted)"/>
+  <text x="512" y="52" class="svg-label small" text-anchor="middle">predicted class</text>
+  <text x="464" y="70" class="svg-label small" text-anchor="middle">car</text>
+  <text x="512" y="70" class="svg-label small" text-anchor="middle">truck</text>
+  <text x="560" y="70" class="svg-label small" text-anchor="middle">bus</text>
+  <rect x="440" y="76" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <rect x="488" y="76" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="536" y="76" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="440" y="124" width="48" height="48" fill="var(--danger)" opacity="0.22" stroke="var(--danger)"/>
+  <rect x="488" y="124" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <rect x="536" y="124" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="440" y="172" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="488" y="172" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="536" y="172" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <text x="464" y="153" class="svg-label strong" text-anchor="middle">+1</text>
+  <text x="432" y="104" class="svg-label small" text-anchor="end">car</text>
+  <text x="432" y="152" class="svg-label small" text-anchor="end">truck</text>
+  <text x="432" y="200" class="svg-label small" text-anchor="end">bus</text>
+  <text x="150" y="216" class="svg-label small" text-anchor="middle">unmatched boxes are dropped</text>
+</svg>
+      </div>
+      <figcaption>A predicted car matched onto a ground-truth truck votes one count into the truck-as-car cell; unmatched boxes are dropped and belong to the critical FP / FN metric.</figcaption>
+    </figure>
     <div class="cm-controls">
       <div class="seg-control" id="det-confusion-slice" role="group" aria-label="Confusion slice"></div>
       <div class="seg-control" id="det-confusion-mode" role="group" aria-label="Confusion view"></div>
@@ -1432,16 +1560,16 @@
   <div class="sec-label">Section 6</div>
   <h2>Segmentation metrics <span class="chip seg3d">seg3d</span></h2>
   <p class="explain">
-    Per-point classification over the 15 trained classes. Quality metrics come from the confusion matrix;
-    the driving-aware metrics (error clusters, calibration, uncertainty) read the full per-point test cache.
-    The <b>taxonomy tab</b> at the top folds these into 8 behaviour groups — e.g. drivable_surface and
-    non_drivable_flat into one <code>grouped_flat</code> — so intra-group confusion stops
-    counting against the model; switch it to read the grouped scores.
+    Per-point classification over the segmentation classes of the database taxonomy the test set is bound
+    to (Section 1 lists them). Quality metrics come from the confusion matrix; the driving-aware metrics
+    (error clusters, tolerant error, calibration, uncertainty) read the full per-point test cache. The
+    <b>taxonomy tab</b> at the top folds the classes into their behaviour groups, so intra-group confusion
+    stops counting against the model; switch it to read the grouped scores.
   </p>
   <div class="chip-row">
     <span class="lead">Shared config</span>
-    <span class="chip">15 trained classes (joined names, e.g. other_flat_surface-sidewalk)</span>
-    <span class="chip">8 behaviour groups when the taxonomy tab is on "Behaviour groups"</span>
+    <span class="chip" data-bind="seg-classes">classes: —</span>
+    <span class="chip" data-bind="seg-groups">behaviour groups: —</span>
     <span class="chip">ignore_index −1 excluded everywhere</span>
   </div>
 
@@ -1499,8 +1627,7 @@
     </figure>
     <div class="chip-row">
       <span class="lead">Config</span>
-      <span class="chip">road slice margin 0.2 m, cut inward</span>
-      <span class="chip">critical = reachability TTC ≤ 4 s (criticality from TTC, not a slice)</span>
+      <span class="chip">road slice margin −0.2 m (cut inward)</span>
       <span class="chip">higher is better ↑</span>
     </div>
     <div class="chart-card">
@@ -1512,13 +1639,13 @@
       <div data-chart="seg-acc-class"></div>
     </div>
     <p class="explain"><b>The release trio</b> — overall mIoU plus the two surfaces we track by name: vegetation (overhang
-    mislabels near the road) and the drivable surface the planner treats as ground (the whole
-    <code>grouped_flat</code> group under the behaviour-groups taxonomy):</p>
+    mislabels near the road) and the drivable surface the planner treats as ground (under the
+    behaviour-groups taxonomy, the groups those two classes fold into):</p>
     <div class="chart-grid">
       <div class="chart-card"><h4>Whole scene <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-whole"></div></div>
-      <div class="chart-card"><h4>Road slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-road"></div></div>
+      <div class="chart-card"><h4>Road slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-road" data-slot-note="No support in this run: the road slice is empty because these scenes ship no lanelet map."></div></div>
       <div class="chart-card"><h4>Corridor slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-corridor"></div></div>
-      <div class="chart-card"><h4>Collision-area slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-collision"></div></div>
+      <div class="chart-card"><h4>Collision-area slice <span class="unit">higher ↑</span></h4><div data-chart="seg-trio-collision" data-slot-note="No support in this run: the collision area is empty because these scenes ship no lanelet map."></div></div>
     </div>
   </article>
 
@@ -1561,9 +1688,9 @@
         <text x="562" y="42" class="svg-label strong" text-anchor="middle">dense cluster — still 1 phantom</text>
       </svg>
       </div>
-      <figcaption>The two point sets of one class — points <em>predicted</em> as the class and points <em>truly</em> of
-    the class — overlap in the true positives; IoU is the intersection over the union of the two sets,
-    and precision / recall read from the same three regions.</figcaption>
+      <figcaption>Every connected group of error points is one cluster: a lone stray point and a dense blob
+    each count as a single phantom, so the cluster count weights obstacles by existence, not by point
+    count (that is what the error rate does).</figcaption>
     </figure>
     <div class="chip-row">
       <span class="lead">Config</span>
@@ -1575,6 +1702,83 @@
     <div class="chart-grid">
       <div class="chart-card"><h4>Point error rate <span class="unit">fraction, lower ↓</span></h4><div data-chart="seg-d1-rate"></div></div>
       <div class="chart-card"><h4>Error clusters per frame <span class="unit">count / frame, lower ↓</span></h4><div data-chart="seg-d1-clusters"></div></div>
+    </div>
+  </article>
+
+  <!-- ------- partial detection ------- -->
+  <article class="metric" id="seg-d2">
+    <div class="metric-head">
+      <h3>Small-object partial-detection score</h3>
+      <span class="chip seg3d">seg3d</span><span class="chip">diagnostic</span>
+    </div>
+    <p class="explain">
+      For a pedestrian or a traffic cone, classifying even a handful of points correctly is far better than
+      classifying none: downstream logic can still react. Point-averaged mIoU cannot see this. Per
+      small-object ground-truth box, the first correctly classified point earns about half the credit
+      (existence) and further points saturate toward one; a box with no correct point scores exactly zero.
+      It needs detection boxes and point labels on the same frame, so it exists only on a joint test set.
+      Diagnostic only, never a release gate.
+    </p>
+    <figure class="explain">
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 210" width="660" height="210" role="img" aria-labelledby="fig-d3-title">
+        <title id="fig-d3-title">Left: the saturating credit curve — zero correct points score zero, the first point earns about half, and credit saturates toward one at all points correct. Right: two instances, one with no correct point scoring zero and one with a single correct point scoring about half.</title>
+        <!-- curve panel -->
+        <rect x="8" y="8" width="310" height="160" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="24" y="32" class="svg-label strong">saturating credit — h = 1</text>
+        <line x1="40" y1="40" x2="300" y2="40" stroke="var(--line)" stroke-width="1" opacity="0.6"/>
+        <line x1="40" y1="90" x2="300" y2="90" stroke="var(--line)" stroke-width="1" opacity="0.6"/>
+        <text x="34" y="44" class="svg-label small" text-anchor="end">1.0</text>
+        <text x="34" y="94" class="svg-label small" text-anchor="end">0.5</text>
+        <line x1="40" y1="40" x2="40" y2="140" stroke="var(--line)" stroke-width="1.5"/>
+        <line x1="40" y1="140" x2="300" y2="140" stroke="var(--line)" stroke-width="1.5"/>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2.5"
+          points="40,140 53,87.5 66,70 79,61.3 92,56 105,52.5 118,50 144,46.7 170,44.6 196,43.1 222,42 248,41.2 274,40.5 300,40"/>
+        <circle cx="40" cy="140" r="4.5" fill="var(--ink2)"/>
+        <circle cx="53" cy="87.5" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="300" cy="40" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="52" y="134" class="svg-label small">0 → 0</text>
+        <text x="66" y="82" class="svg-label strong">1 pt → 0.5</text>
+        <text x="300" y="28" class="svg-label small" text-anchor="end">20/20 → 1.0</text>
+        <text x="170" y="158" class="svg-label small" text-anchor="middle">correct points k inside the GT box (n = 20)</text>
+        <!-- instance panel -->
+        <rect x="342" y="8" width="310" height="160" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="358" y="32" class="svg-label strong">existence is the big step</text>
+        <rect x="370" y="52" width="60" height="60" rx="4" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <g fill="var(--muted)" opacity="0.55">
+          <circle cx="382" cy="62" r="4"/><circle cx="400" cy="58" r="4"/><circle cx="418" cy="64" r="4"/>
+          <circle cx="378" cy="80" r="4"/><circle cx="398" cy="78" r="4"/><circle cx="420" cy="82" r="4"/>
+          <circle cx="384" cy="100" r="4"/><circle cx="404" cy="96" r="4"/><circle cx="422" cy="102" r="4"/>
+        </g>
+        <text x="400" y="132" class="svg-label small" text-anchor="middle">0 / 9 → credit 0.00</text>
+        <rect x="500" y="52" width="60" height="60" rx="4" fill="none" stroke="var(--ink2)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <circle cx="512" cy="64" r="4" fill="var(--accent)"/>
+        <g fill="var(--muted)" opacity="0.55">
+          <circle cx="530" cy="60" r="4"/><circle cx="548" cy="66" r="4"/>
+          <circle cx="508" cy="82" r="4"/><circle cx="528" cy="78" r="4"/><circle cx="550" cy="84" r="4"/>
+          <circle cx="514" cy="100" r="4"/><circle cx="534" cy="96" r="4"/><circle cx="552" cy="102" r="4"/>
+        </g>
+        <text x="530" y="132" class="svg-label small" text-anchor="middle">1 / 9 → credit ≈ 0.56</text>
+        <!-- legend -->
+        <circle cx="24" cy="192" r="5" fill="var(--accent)"/>
+        <text x="36" y="196" class="svg-label small">point classified correctly</text>
+        <circle cx="204" cy="192" r="5" fill="var(--muted)" opacity="0.55"/>
+        <text x="216" y="196" class="svg-label small">point misclassified</text>
+        <text x="644" y="196" class="svg-label small" text-anchor="end">dashed = small-object GT box</text>
+      </svg>
+      </div>
+      <figcaption>Credit is a saturating function of the correct-point count: zero correct points score exactly 0, the first point earns about half (existence), and further points add diminishing refinement up to 1 at all points correct.</figcaption>
+    </figure>
+    <div class="chip-row">
+      <span class="lead">Config</span>
+      <span class="chip">credit = s(k) / s(n), s(x) = x / (x + 1)</span>
+      <span class="chip">boxes with no interior point are skipped and counted</span>
+      <span class="chip">per trained class only, never grouped</span>
+      <span class="chip">higher is better ↑</span>
+    </div>
+    <div class="chart-card">
+      <h4>Partial-detection score <span class="unit">mean credit per box, 0–1, higher ↑</span></h4>
+      <div data-chart="seg-d2" data-slot-note="Not measured on this test set: the score needs detection boxes and point labels on the same frame."></div>
     </div>
   </article>
 
@@ -1788,6 +1992,53 @@
       With more than one release on the test set, <b>Δ vs previous</b> swaps the cell values for the change
       since the previous release, coloured green where the model improved and red where it regressed.
     </p>
+    <figure class="explain">
+      <div class="fig-wrap">
+      <svg viewBox="0 0 660 240" width="660" height="240" role="img" aria-labelledby="fig-scm-title">
+  <title id="fig-scm-title">Walkway points predicted as road vote into the off-diagonal walkway-as-road cell of the point confusion matrix.</title>
+  <rect x="8" y="8" width="644" height="224" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="330" y="32" class="svg-label strong" text-anchor="middle">Every point votes a confusion cell</text>
+  <rect x="30" y="90" width="330" height="76" rx="8" fill="var(--chip-bg)" stroke="var(--line)"/>
+  <text x="90" y="82" class="svg-label small" text-anchor="middle">road</text>
+  <rect x="150" y="90" width="90" height="76" fill="var(--surface)" stroke="var(--line)"/>
+  <text x="195" y="82" class="svg-label small" text-anchor="middle">walkway</text>
+  <circle cx="60" cy="112" r="3" fill="var(--accent)"/>
+  <circle cx="86" cy="142" r="3" fill="var(--accent)"/>
+  <circle cx="112" cy="120" r="3" fill="var(--accent)"/>
+  <circle cx="130" cy="150" r="3" fill="var(--accent)"/>
+  <circle cx="264" cy="112" r="3" fill="var(--accent)"/>
+  <circle cx="292" cy="146" r="3" fill="var(--accent)"/>
+  <circle cx="322" cy="118" r="3" fill="var(--accent)"/>
+  <circle cx="168" cy="114" r="3" fill="var(--obj)"/>
+  <circle cx="192" cy="140" r="3" fill="var(--obj)"/>
+  <circle cx="214" cy="112" r="3" fill="var(--obj)"/>
+  <circle cx="180" cy="154" r="3" fill="var(--obj)"/>
+  <circle cx="222" cy="146" r="3" fill="var(--obj)"/>
+  <text x="195" y="186" class="svg-label small" fill="var(--obj)" text-anchor="middle">walkway points predicted as road</text>
+  <line x1="368" y1="128" x2="392" y2="140" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <polygon points="391,134 404,142 393,148" fill="var(--muted)"/>
+  <text x="512" y="52" class="svg-label small" text-anchor="middle">predicted class</text>
+  <text x="464" y="70" class="svg-label small" text-anchor="middle">road</text>
+  <text x="512" y="70" class="svg-label small" text-anchor="middle">walkway</text>
+  <text x="560" y="70" class="svg-label small" text-anchor="middle">terrain</text>
+  <rect x="440" y="76" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <rect x="488" y="76" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="536" y="76" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="440" y="124" width="48" height="48" fill="var(--danger)" opacity="0.22" stroke="var(--danger)"/>
+  <rect x="488" y="124" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <rect x="536" y="124" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="440" y="172" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="488" y="172" width="48" height="48" fill="none" stroke="var(--line)"/>
+  <rect x="536" y="172" width="48" height="48" fill="var(--accent)" opacity="0.12" stroke="var(--line)"/>
+  <text x="464" y="153" class="svg-label strong" text-anchor="middle">+5</text>
+  <text x="432" y="104" class="svg-label small" text-anchor="end">road</text>
+  <text x="432" y="152" class="svg-label small" text-anchor="end">walkway</text>
+  <text x="432" y="200" class="svg-label small" text-anchor="end">terrain</text>
+  <text x="195" y="214" class="svg-label small" text-anchor="middle">grouped suites fold both axes onto behaviour groups</text>
+</svg>
+      </div>
+      <figcaption>Every point votes confusion[true, predicted]; the grouped suites fold both axes onto the behaviour groups, so only swaps that change the driving decision stay off the diagonal.</figcaption>
+    </figure>
     <div class="cm-controls">
       <div class="seg-control" id="seg-confusion-slice" role="group" aria-label="Confusion slice"></div>
       <div class="seg-control" id="seg-confusion-mode" role="group" aria-label="Confusion view"></div>
@@ -1805,8 +2056,9 @@
     The complete key → value dump from each model's test evaluation, one column per release. The best value
     per row is <b>bold</b> according to the metric's direction (↑ higher / ↓ lower / · not ranked — counts
     and sanity keys); “–” is a metric without support there. Keys read as
-    <code>[slice/]metric[_range]</code>. <code>gt_count_*</code> rows must match across models on the same
-    split.
+    <code>[slice/]metric[_range]</code>. <code>gt_count_*</code> rows must match across releases scored on
+    the same label vocabulary. The occlusion-split suites and the joint partial-detection suite follow as
+    their own tables.
   </p>
   <div data-task="det3d">
     <h3>Detection <span class="chip det3d">det3d</span></h3>
@@ -1817,6 +2069,7 @@
     <div class="table-wrap appendix-wrap">
       <table class="appendix-table" id="det-appendix"></table>
     </div>
+    <div id="det-extra-appendix"></div>
   </div>
   <div data-task="seg3d">
     <h3>Segmentation <span class="chip seg3d">seg3d</span></h3>
@@ -1827,6 +2080,7 @@
     <div class="table-wrap appendix-wrap">
       <table class="appendix-table" id="seg-appendix"></table>
     </div>
+    <div id="seg-extra-appendix"></div>
   </div>
 
   <h3>Metric spec <span class="chip" data-bind="metric-spec-bundle">—</span></h3>
@@ -1844,7 +2098,7 @@
 
 <footer class="doc">
   <p>
-    PTv3 multi-head model report · charts render from the embedded <code>report-data</code> block — no
+    Model report · charts render from the embedded <code>report-data</code> block — no
     external dependencies. Metric definitions and figures follow the
     perception-metrics proposal; evaluation settings are printed as chips next to each
     metric. Open in any browser; dark mode follows the system theme.
@@ -1857,38 +2111,16 @@
 {
   "test_sets": [
     {
-      "id": "det3d",
-      "label": "det3d",
-      "version": "0.1",
-      "tasks": [
-        "det3d"
-      ],
-      "dataset": null,
-      "metric_spec": null,
-      "models": []
+      "id": "det3d-j6gen2", "label": "det3d-j6gen2", "version": "0.1.0", "tasks": ["det3d"],
+      "taxonomy": {}, "dataset": null, "metric_spec": null, "models": []
     },
     {
-      "id": "seg3d",
-      "label": "seg3d",
-      "version": "0.1",
-      "tasks": [
-        "seg3d"
-      ],
-      "dataset": null,
-      "metric_spec": null,
-      "models": []
+      "id": "seg3d-j6gen2", "label": "seg3d-j6gen2", "version": "0.1.0", "tasks": ["seg3d"],
+      "taxonomy": {}, "dataset": null, "metric_spec": null, "models": []
     },
     {
-      "id": "det3d-seg3d-j6gen2",
-      "label": "det3d-seg3d-j6gen2-v0.1",
-      "version": "0.1",
-      "tasks": [
-        "det3d",
-        "seg3d"
-      ],
-      "dataset": null,
-      "metric_spec": null,
-      "models": []
+      "id": "det3d-seg3d-j6gen2", "label": "det3d-seg3d-j6gen2", "version": "0.1.0", "tasks": ["det3d", "seg3d"],
+      "taxonomy": {}, "dataset": null, "metric_spec": null, "models": []
     }
   ]
 }
@@ -1899,11 +2131,23 @@
 /* ---------------- data & constants ---------------- */
 const DATA = JSON.parse(document.getElementById("report-data").textContent);
 const TEST_SETS = Array.isArray(DATA.test_sets) ? DATA.test_sets : [];
-let currentTestSet = 0;
+// Open on the test set that holds the newest release, so a report built for a
+// release lands on the numbers that release added.
+function initialTestSet() {
+  let best = 0, bestDate = "";
+  TEST_SETS.forEach((ts, i) => {
+    for (const m of ts.models || []) {
+      const date = String(m.date || "");
+      if (date > bestDate) { bestDate = date; best = i; }
+    }
+  });
+  return best;
+}
+let currentTestSet = initialTestSet();
 let MODELS = [];         // the active test set's models (set by render())
 let METRIC_SPEC = null;  // the active test set's metric_spec (set by render())
 function activeSet() {
-  return TEST_SETS[currentTestSet] || { tasks: [], models: [], metric_spec: null, dataset: null };
+  return TEST_SETS[currentTestSet] || { tasks: [], models: [], metric_spec: null, dataset: null, taxonomy: {} };
 }
 function activeTasks() {
   return new Set(activeSet().tasks || []);
@@ -1919,51 +2163,26 @@ const DET_ROAD = "region_road";
 const SEG_ROAD = "region_road";
 const COR = "corridor";
 const COL = "collision";
-// Per-class taxonomies (trained classes) and behaviour-group taxonomies (folded).
-// The taxonomy tab switches which the charts read: per-class keys live in the
-// det3d / seg3d metric buckets, grouped keys in det3d_grouped / seg3d_grouped.
-const DET_CLASSES = [
-  "car", "truck", "bus", "train", "motorcycle", "bicycle", "pedestrian",
-  "animal", "barrier", "traffic_cone", "debris", "bicycle_rack", "vehicle_extension",
-];
-const DET_GROUPED = [
-  "grouped_vehicle", "grouped_two_wheeler", "grouped_pedestrian_animal",
-  "grouped_static_obstacle", "grouped_debris", "grouped_structure",
-];
-const SEG_CLASSES = [
-  ["car", "car"],
-  ["truck", "truck"],
-  ["bus", "bus"],
-  ["train", "train"],
-  ["motorcycle", "motorcycle"],
-  ["bicycle", "bicycle"],
-  ["pedestrian", "pedestrian"],
-  ["animal", "animal"],
-  ["barrier", "barrier"],
-  ["traffic_cone", "traffic_cone"],
-  ["debris", "debris"],
-  ["bicycle_rack", "bicycle_rack"],
-  ["vehicle_extension", "vehicle_extension"],
-  ["drivable_flat", "drivable_flat"],
-  ["non_drivable_flat", "non_drivable_flat"],
-  ["vegetation", "vegetation"],
-  ["building", "building"],
-  ["vertical_thin", "vertical_thin"],
-  ["static_clutter", "static_clutter"],
-  ["noise", "noise"],
-];
-const SEG_GROUPED = [
-  ["grouped_vehicle", "vehicle"],
-  ["grouped_two_wheeler", "two-wheeler"],
-  ["grouped_pedestrian_animal", "pedestrian / animal"],
-  ["grouped_static_obstacle", "static obstacle"],
-  ["grouped_debris", "debris"],
-  ["grouped_static_clutter", "static clutter"],
-  ["grouped_flat", "flat surface"],
-  ["grouped_vegetation", "vegetation"],
-  ["grouped_structure", "structure"],
-  ["grouped_noise", "noise"],
-];
+// The label vocabulary is data: every test set carries the classes and behaviour
+// groups its release was scored on, and the charts read them from there. Per-class
+// keys live in the det3d / seg3d metric buckets, grouped keys in det3d_grouped /
+// seg3d_grouped.
+function taxonomyOf(task) {
+  const entry = (activeSet().taxonomy || {})[task] || {};
+  return {
+    classes: Array.isArray(entry.classes) ? entry.classes : [],
+    groups: entry.groups && typeof entry.groups === "object" ? entry.groups : {},
+  };
+}
+function groupLabel(name) {
+  return name.replace(/^grouped_/, "").replace(/_/g, " ");
+}
+function groupOf(task, className) {
+  // The behaviour group a trained class folds into, undefined when the class is unknown.
+  for (const [group, members] of Object.entries(taxonomyOf(task).groups))
+    if (Array.isArray(members) && members.includes(className)) return group;
+  return undefined;
+}
 const TAXONOMIES = [
   { id: "per", label: "Per class" },
   { id: "grouped", label: "Behaviour groups" },
@@ -1974,17 +2193,23 @@ let currentTaxonomy = "per";
 /* ---------------- helpers ---------------- */
 // Active class lists / metric bucket for the selected taxonomy.
 function detClasses() {
-  return currentTaxonomy === "grouped" ? DET_GROUPED : DET_CLASSES;
+  const tax = taxonomyOf("det3d");
+  return currentTaxonomy === "grouped" ? Object.keys(tax.groups) : tax.classes;
 }
 function segClasses() {
-  return currentTaxonomy === "grouped" ? SEG_GROUPED : SEG_CLASSES;
+  // [key, label] pairs: the key is the metric token, the label what the chart prints.
+  const tax = taxonomyOf("seg3d");
+  return currentTaxonomy === "grouped"
+    ? Object.keys(tax.groups).map((g) => [g, groupLabel(g)])
+    : tax.classes.map((c) => [c, c]);
 }
 function taxonomyBucket(task) {
   return currentTaxonomy === "grouped" ? task + "_grouped" : task;
 }
-function metricValue(model, task, slice, key, rangeId) {
+function metricValue(model, task, slice, key, rangeId, bucketName) {
+  // bucketName overrides the taxonomy bucket for suites without a grouped twin.
   const full = (slice ? slice + "/" : "") + key + "_" + rangeId;
-  const bucket = model.metrics[taxonomyBucket(task)];
+  const bucket = model.metrics[bucketName || taxonomyBucket(task)];
   const v = bucket ? bucket[full] : undefined;
   return v === undefined ? undefined : v;
 }
@@ -2001,7 +2226,7 @@ function niceCeil(x) {
   for (const m of [1, 1.5, 2, 2.5, 4, 5, 8, 10]) if (m * p >= x) return m * p;
   return 10 * p;
 }
-const NEUTRAL_RE = /^(gt_count|num_match|tp_error_num_match|optimal_conf|nsurf_low|nsurf_mean|mnsurf_mean)/;
+const NEUTRAL_RE = /^(gt_count|num_match|tp_error_num_match|optimal_conf|nsurf_low|nsurf_mean|mnsurf_mean|pd_skipped)/;
 const LOWER_RE = /^(mATE|mASE|mAOE|mAVE|mAAE|ATE_|ASE_|AOE_|AVE_|AAE_|corner_|mcorner|nsurf_|mnsurf|flip_|mflip|critical_|ece|error_rate|error_cluster|tolerant_error|confident_error|mean_entropy_correct)/;
 const HIGHER_RE = /^(mAP|AP_|mAPH|APH_|map_based_nds|mapH_based_nds|max_f1|cw_mAP|mIoU|fwIoU|iou_|acc_|mPrecision|mRecall|mF1|precision_|recall_|f1_|entropy_auroc|mean_entropy_wrong|optimal_recall|optimal_precision|pd_score|mpd_score)/;
 function direction(fullKey) {
@@ -2043,16 +2268,22 @@ function detClassRows(slice) {
   for (const c of detClasses()) rows.push({ label: c, key: "mAP_" + c, slice: slice });
   return rows;
 }
-// Headline trio (mIoU + vegetation + flat surface), taxonomy-aware.
+// The drivable surface class of the active vocabulary (spelled driveable_flat or drivable_flat).
+function drivableClass() {
+  return taxonomyOf("seg3d").classes.find((c) => /^driv/.test(c));
+}
+// Headline trio (mIoU + vegetation + drivable surface), taxonomy-aware: under the
+// behaviour groups each class is replaced by the group it folds into.
 function segTrioRows(slice) {
   const grouped = currentTaxonomy === "grouped";
-  const veg = grouped ? "iou_grouped_vegetation" : "iou_vegetation";
-  const flat = grouped ? "iou_grouped_flat" : "iou_drivable_flat";
-  return [
-    { label: "mIoU", key: "mIoU", slice: slice },
-    { label: "vegetation", key: veg, slice: slice },
-    { label: grouped ? "flat surface" : "drivable_surface", key: flat, slice: slice },
-  ];
+  const rows = [{ label: "mIoU", key: "mIoU", slice: slice }];
+  for (const cls of ["vegetation", drivableClass()]) {
+    if (!cls) continue;
+    const key = grouped ? groupOf("seg3d", cls) : cls;
+    if (!key || rows.some((r) => r.key === "iou_" + key)) continue;
+    rows.push({ label: grouped ? groupLabel(key) : cls, key: "iou_" + key, slice: slice });
+  }
+  return rows;
 }
 const CHART_SPECS = [
   { el: "det-ap-class", task: "det3d", domainMax: 1, rows: () => detClassRows("") },
@@ -2086,19 +2317,31 @@ const CHART_SPECS = [
   ]},
   { el: "det-b1-fn", task: "det3d", rows: () => {
     // Missed object in ego's path, per class — a missed pedestrian weighs on its own.
-    const rows = [{ label: "overall", key: "critical_fn_0p5m", slice: "", strong: true }];
-    for (const c of detClasses()) rows.push({ label: c, key: "critical_fn_" + c + "_0p5m", slice: "" });
+    const rows = [{ label: "overall", key: "critical_fn_conf0p5", slice: "", strong: true }];
+    for (const c of detClasses()) rows.push({ label: c, key: "critical_fn_" + c + "_conf0p5", slice: "" });
     return rows;
   } },
   { el: "det-b1-fp", task: "det3d", rows: () => {
-    const rows = [{ label: "overall", key: "critical_fp_0p5m", slice: "", strong: true }];
-    for (const c of detClasses()) rows.push({ label: c, key: "critical_fp_" + c + "_0p5m", slice: "" });
+    const rows = [{ label: "overall", key: "critical_fp_conf0p5", slice: "", strong: true }];
+    for (const c of detClasses()) rows.push({ label: c, key: "critical_fp_" + c + "_conf0p5", slice: "" });
     return rows;
   } },
   { el: "det-b2", task: "det3d", domainMax: 1, rows: () => {
     // Whole-scene (B2 is TTC-weighted, not corridor-filtered): cw-mAP plus per class.
     const rows = [{ label: "cw-mAP (all classes)", key: "cw_mAP", slice: "", strong: true }];
     for (const c of detClasses()) rows.push({ label: c, key: "cw_mAP_" + c, slice: "" });
+    return rows;
+  } },
+  { el: "det-b3", task: "det3d", domainMax: 1, rows: () => {
+    // The two occlusion suites are per-class only, so the rows ignore the taxonomy tab.
+    const rows = [
+      { label: "mAP — visible", key: "mAP", slice: "", bucket: "det3d_visible", strong: true },
+      { label: "mAP — overall", key: "mAP", slice: "", bucket: "det3d_overall", strong: true },
+    ];
+    for (const c of taxonomyOf("det3d").classes) {
+      rows.push({ label: c + " — visible", key: "mAP_" + c, slice: "", bucket: "det3d_visible" });
+      rows.push({ label: c + " — overall", key: "mAP_" + c, slice: "", bucket: "det3d_overall" });
+    }
     return rows;
   } },
   { el: "det-e1", task: "det3d", rows: [
@@ -2142,6 +2385,18 @@ const CHART_SPECS = [
     { label: "overall — whole", key: "error_clusters_per_frame", slice: "" },
     { label: "overall — road", key: "error_clusters_per_frame", slice: SEG_ROAD },
   ]},
+  { el: "seg-d2", task: "seg3d", domainMax: 1, rows: () => {
+    // The scored classes are the detection classes the joint package names; they are
+    // read off the keys present, so a class without a score never draws an empty row.
+    const scored = taxonomyOf("det3d").classes.filter((c) => MODELS.some((m) =>
+      Object.keys(m.metrics.segdet3d || {}).some((k) => k.startsWith("pd_score_" + c + "_"))));
+    const rows = [];
+    for (const [slice, tag] of [["", "whole scene"], [COR, "corridor"], [COL, "collision area"]]) {
+      rows.push({ label: "mean — " + tag, key: "mpd_score", slice: slice, bucket: "segdet3d", strong: true });
+      for (const c of scored) rows.push({ label: c + " — " + tag, key: "pd_score_" + c, slice: slice, bucket: "segdet3d" });
+    }
+    return rows;
+  } },
   { el: "seg-d3", task: "seg3d", rows: () => {
     // Every class, whole scene and road (in the grouped taxonomy the fold already
     // treats intra-group confusion as correct).
@@ -2174,9 +2429,10 @@ const CHART_SPECS = [
    place at load, so the source can stay grouped by family while the report reads
    in importance order. Adjust the arrays to re-rank — no block moves needed. */
 const DET_ORDER = [
-  "det-b2",   // collision-risk-weighted mAP (corridor)
-  "det-b1",   // critical FP/FN (corridor)
+  "det-b2",   // collision-risk-weighted mAP
+  "det-b1",   // critical FP/FN
   "det-ap",   // mAP + per-class AP
+  "det-b3",   // occlusion-aware recall split (diagnostic context for mAP)
   "det-heading", // mAPH + NDS
   "det-a3",   // signed nearest-surface error
   "det-a1",   // corner displacement error
@@ -2185,13 +2441,11 @@ const DET_ORDER = [
   "det-e3",   // confident-error rate
   "det-e1",   // calibration (ECE)
   "det-confusion", // class confusion matrix (diagnostic)
-  // det-b3 (occlusion-aware recall) — pending: needs the visible/overall suites
-  // surfaced into the report data schema.
 ];
 const SEG_ORDER = [
   "seg-d3",   // tolerant error — all classes
   "seg-d1",   // error clusters — overall + all classes
-  // seg-d3 (partial detection) — pending: needs a det3d+seg3d test set.
+  "seg-d2",   // partial detection (joint test sets only, diagnostic)
   "seg-iou",  // IoU + accuracy + P/R/F1 (classic core)
   "seg-e3",   // confident-error rate
   "seg-e1",   // calibration (ECE)
@@ -2231,7 +2485,7 @@ function chartMax(spec) {
   for (const rng of RANGES)
     for (const row of specRows(spec))
       for (const model of MODELS) {
-        const v = metricValue(model, spec.task, row.slice, row.key, rng.id);
+        const v = metricValue(model, spec.task, row.slice, row.key, rng.id, row.bucket);
         if (typeof v === "number" && v > max) max = v;
       }
   return niceCeil(max);
@@ -2240,7 +2494,7 @@ function specHasAnyValue(spec) {
   for (const rng of RANGES)
     for (const row of specRows(spec))
       for (const model of MODELS)
-        if (typeof metricValue(model, spec.task, row.slice, row.key, rng.id) === "number") return true;
+        if (typeof metricValue(model, spec.task, row.slice, row.key, rng.id, row.bucket) === "number") return true;
   return false;
 }
 function renderChart(spec) {
@@ -2310,7 +2564,7 @@ function renderChart(spec) {
 
     MODELS.forEach((model, mi) => {
       const y = y0 + mi * (barH + barGap);
-      const v = metricValue(model, spec.task, row.slice, row.key, currentRange);
+      const v = metricValue(model, spec.task, row.slice, row.key, currentRange, row.bucket);
       const isNum = typeof v === "number";
       const color = model._color || SERIES[0];
       let mark = null;
@@ -2334,8 +2588,8 @@ function renderChart(spec) {
     });
 
     if (deltaBase) {
-      const cur = metricValue(newest, spec.task, row.slice, row.key, currentRange);
-      const prev = metricValue(deltaBase, spec.task, row.slice, row.key, currentRange);
+      const cur = metricValue(newest, spec.task, row.slice, row.key, currentRange, row.bucket);
+      const prev = metricValue(deltaBase, spec.task, row.slice, row.key, currentRange, row.bucket);
       if (typeof cur === "number" && typeof prev === "number") {
         const d = cur - prev;
         const flat = Math.abs(d) < 5e-4;
@@ -2523,7 +2777,7 @@ function renderConfusion(task) {
         }
       } else {
         strong = norm > 0.5;
-        fill = `color-mix(in oklab, var(--series-1) ${Math.round(norm * 100)}%, var(--surface))`;
+        fill = `color-mix(in oklab, var(--seq) ${Math.round(norm * 100)}%, var(--surface))`;
         if (norm >= CM_TEXT_EPS) valueText = norm >= 0.995 ? "1" : norm.toFixed(2).replace(/^0/, "");
       }
       svg.appendChild(svgEl("rect", { x, y, width: cs, height: cs, fill, class: "cm-cell" }));
@@ -2630,37 +2884,47 @@ function buildConfusionSliceTabs() {
 // Headline summary. Each tile names its bucket explicitly, so it is stable across
 // the taxonomy tab — "flat-surface accuracy" always reads the grouped bucket
 // (drivable + sidewalk merged, so their mutual confusion is ignored).
-// Legacy-5 bridge: mean over car, truck, bus, pedestrian plus the folded
-// two-wheeler (motorcycle+bicycle, their mutual confusion ignored). Derived
-// client-side from the per-class and grouped buckets — per-class APs are
-// independent, so this equals what a dedicated legacy suite would report.
-function legacy5(model, prefix, rangeId) {
+// Legacy-6 bridge: mean over car, truck, bus, pedestrian, bicycle and motorcycle,
+// each scored as its own class. Derived client-side from the per-class bucket —
+// per-class APs are independent, so this equals what a dedicated legacy suite
+// would report.
+const LEGACY6_CLASSES = ["car", "truck", "bus", "pedestrian", "bicycle", "motorcycle"];
+function legacy6(model, prefix, rangeId) {
   const det = model.metrics["det3d"];
-  const grouped = model.metrics["det3d_grouped"];
-  if (!det || !grouped) return undefined;
+  if (!det) return undefined;
   const suffix = rangeId ? "_" + rangeId : "";
-  const values = ["car", "truck", "bus", "pedestrian"].map(
-    (name) => det[prefix + "_" + name + suffix]
-  );
-  values.push(grouped[prefix + "_grouped_two_wheeler" + suffix]);
+  const values = LEGACY6_CLASSES.map((name) => det[prefix + "_" + name + suffix]);
   if (values.some((v) => v === undefined || v === null)) return undefined;
   return values.reduce((total, v) => total + v, 0) / values.length;
+}
+
+// Recall of the behaviour group the drivable surface folds into: its members'
+// mutual confusion (drivable vs sidewalk vs curb) is ignored, which is the
+// planner's view of "ground".
+function flatSurfaceRecall(model, rangeId) {
+  const drivable = drivableClass();
+  const group = drivable ? groupOf("seg3d", drivable) : undefined;
+  const bucket = model.metrics["seg3d_grouped"];
+  if (!group || !bucket) return undefined;
+  return bucket["recall_" + group + "_" + rangeId];
 }
 
 const TILES = [
   { label: "mAP", task: "det3d", bucket: "det3d", key: "mAP", slice: "" },
   { label: "mAPH", task: "det3d", bucket: "det3d", key: "mAPH", slice: "" },
-  { label: "mAP-legacy5", task: "det3d", key: "mAP_legacy5", derive: (m, r) => legacy5(m, "mAP", r),
-    note: "mean of car / truck / bus / pedestrian / two-wheeler (motorcycle+bicycle folded) — comparable with pre-taxonomy reports" },
-  { label: "mAPH-legacy5", task: "det3d", key: "mAPH_legacy5", derive: (m, r) => legacy5(m, "mAPH", r),
-    note: "heading-aware legacy-5 mean, same class subset and fold" },
+  { label: "mAP-legacy6", task: "det3d", key: "mAP_legacy6", derive: (m, r) => legacy6(m, "mAP", r),
+    note: "mean of car / truck / bus / pedestrian / bicycle / motorcycle, each as its own class — comparable with pre-taxonomy reports" },
+  { label: "mAPH-legacy6", task: "det3d", key: "mAPH_legacy6", derive: (m, r) => legacy6(m, "mAPH", r),
+    note: "heading-aware legacy-6 mean, same class subset" },
   { label: "Collision-weighted mAP", task: "det3d", bucket: "det3d", key: "cw_mAP", slice: "" },
-  { label: "Critical FP / frame", task: "det3d", bucket: "det3d", key: "critical_fp_0p5m", slice: "" },
-  { label: "Critical FN / frame", task: "det3d", bucket: "det3d", key: "critical_fn_0p5m", slice: "" },
+  { label: "Critical FP / frame", task: "det3d", bucket: "det3d", key: "critical_fp_conf0p5", slice: "",
+    note: "phantom boxes in the ego collision set at confidence 0.5" },
+  { label: "Critical FN / frame", task: "det3d", bucket: "det3d", key: "critical_fn_conf0p5", slice: "",
+    note: "missed objects in the ego collision set at confidence 0.5" },
   { label: "mIoU", task: "seg3d", bucket: "seg3d", key: "mIoU", slice: "" },
   { label: "Accuracy", task: "seg3d", bucket: "seg3d", key: "acc", slice: "" },
-  { label: "Flat-surface accuracy", task: "seg3d", bucket: "seg3d_grouped", key: "recall_grouped_flat", slice: "",
-    note: "drivable_surface + other_flat_surface/sidewalk merged — their mutual confusion is ignored" },
+  { label: "Flat-surface accuracy", task: "seg3d", key: "recall_flat_surface", derive: flatSurfaceRecall,
+    note: "recall of the behaviour group the drivable surface folds into — its members' mutual confusion is ignored" },
   { label: "Vegetation accuracy", task: "seg3d", bucket: "seg3d", key: "recall_vegetation", slice: "" },
 ];
 function tileValue(model, tile, rangeId) {
@@ -2738,7 +3002,7 @@ function renderRegistry() {
   if (!MODELS.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 6;
+    td.colSpan = 7;
     td.className = "slot-note";
     td.textContent = "No releases yet — paste a model entry into the report-data block at the bottom of this file.";
     tr.appendChild(td);
@@ -2759,13 +3023,17 @@ function renderRegistry() {
     date.textContent = model.date || "–";
     tr.appendChild(date);
     tr.appendChild(linkedCell(model.repo_commit, model.repo_commit_url));
-    tr.appendChild(linkedCell("artifacts", model.artifacts_url));
+    // Artifacts: column kept as a placeholder, left blank until a published location exists.
+    tr.appendChild(linkedCell("–", null));
     tr.appendChild(linkedCell(model.universe_commit, model.universe_commit_url));
     const cfg = document.createElement("td");
     const code = document.createElement("code");
     code.textContent = model.eval_config || "–";
     cfg.appendChild(code);
     tr.appendChild(cfg);
+    const spec = document.createElement("td");
+    spec.textContent = model.metric_spec_bundle || "–";
+    tr.appendChild(spec);
     body.appendChild(tr);
   });
 }
@@ -2859,6 +3127,83 @@ function wireAppendixSearch(tableId, searchId, countId) {
   });
 }
 
+// Suites without a taxonomy twin get their own table: the occlusion-split buckets
+// under detection, the joint partial-detection bucket under segmentation.
+const EXTRA_BUCKETS = {
+  "det-extra-appendix": [["det3d_visible", "Visible split (GT with at least one lidar point)"],
+                         ["det3d_overall", "Overall split (every GT box)"]],
+  "seg-extra-appendix": [["segdet3d", "Joint detection + segmentation (partial-detection score)"]],
+};
+function buildExtraAppendices() {
+  for (const [hostId, buckets] of Object.entries(EXTRA_BUCKETS)) {
+    const host = document.getElementById(hostId);
+    if (!host) continue;
+    host.textContent = "";
+    for (const [bucket, title] of buckets) {
+      const keys = new Set();
+      for (const model of MODELS)
+        for (const key of Object.keys(model.metrics[bucket] || {})) keys.add(key);
+      if (!keys.size) continue;
+      const heading = document.createElement("h4");
+      heading.textContent = title + " · ";
+      const code = document.createElement("code");
+      code.textContent = bucket;
+      heading.appendChild(code);
+      host.appendChild(heading);
+      const wrap = document.createElement("div");
+      wrap.className = "table-wrap appendix-wrap";
+      const table = document.createElement("table");
+      table.className = "appendix-table";
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      for (const text of ["Metric key", "better"]) {
+        const th = document.createElement("th");
+        th.textContent = text;
+        headRow.appendChild(th);
+      }
+      for (const model of MODELS) {
+        const th = document.createElement("th");
+        th.className = "num";
+        th.textContent = model.name;
+        headRow.appendChild(th);
+      }
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+      const tbody = document.createElement("tbody");
+      const sorted = Array.from(keys).sort((a, b) => sliceOrder(a).localeCompare(sliceOrder(b)));
+      for (const key of sorted) {
+        const tr = document.createElement("tr");
+        const dir = direction(key);
+        const values = MODELS.map((m) => {
+          const v = (m.metrics[bucket] || {})[key];
+          return typeof v === "number" ? v : null;
+        });
+        let best = null;
+        if (dir !== "neutral") {
+          const present = values.filter((v) => v !== null);
+          if (present.length > 1) best = dir === "lower" ? Math.min(...present) : Math.max(...present);
+        }
+        const keyCell = document.createElement("td");
+        keyCell.textContent = key;
+        const dirCell = document.createElement("td");
+        dirCell.className = "dir";
+        dirCell.textContent = dir === "higher" ? "↑" : dir === "lower" ? "↓" : "·";
+        tr.append(keyCell, dirCell);
+        values.forEach((v) => {
+          const td = document.createElement("td");
+          td.className = "num" + (best !== null && v === best ? " best" : "");
+          td.textContent = fmtValue(v);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      host.appendChild(wrap);
+    }
+  }
+}
+
 /* ---------------- metadata bindings & metric spec ---------------- */
 function setBind(name, text) {
   for (const el of document.querySelectorAll('[data-bind="' + name + '"]')) el.textContent = text;
@@ -2870,6 +3215,15 @@ function bindMeta() {
   setBind("metric-spec-bundle", spec && spec.bundle ? spec.bundle : "—");
   setBind("test-set", ts.label ? "test set: " + ts.label : "test set: —");
   setBind("test-set-version", ts.version ? "v" + ts.version : "v—");
+  setBind("report-title", DATA.title || "Model report");
+  for (const [task, short] of [["det3d", "det"], ["seg3d", "seg"]]) {
+    const tax = taxonomyOf(task);
+    const groups = Object.keys(tax.groups);
+    setBind(short + "-classes", tax.classes.length
+      ? "classes (" + tax.classes.length + "): " + tax.classes.join(" · ") : "classes: —");
+    setBind(short + "-groups", groups.length
+      ? "behaviour groups (" + groups.length + "): " + groups.map(groupLabel).join(" · ") : "behaviour groups: —");
+  }
   const status = document.querySelector('[data-bind="data-status"]');
   if (status) {
     if (MODELS.length) {
@@ -2968,6 +3322,56 @@ function renderDistribution(dist) {
   }
   return wrap;
 }
+function statCell(label, value, asText) {
+  const cell = document.createElement("div");
+  cell.className = "ts-stat";
+  const kk = document.createElement("div");
+  kk.className = "k";
+  kk.textContent = label;
+  const vv = document.createElement("div");
+  vv.className = asText ? "v text" : "v";
+  vv.textContent = asText ? String(value) : fmtValue(value);
+  cell.append(kk, vv);
+  return cell;
+}
+function renderTaxonomy(host, ts) {
+  host.textContent = "";
+  const tasks = Array.isArray(ts.tasks) ? ts.tasks : [];
+  let shown = 0;
+  for (const task of tasks) {
+    const tax = taxonomyOf(task);
+    if (!tax.classes.length) continue;
+    shown += 1;
+    const groups = Object.entries(tax.groups);
+    const head = document.createElement("h4");
+    head.textContent = task + " — " + tax.classes.length + " classes, " + groups.length + " behaviour groups";
+    host.appendChild(head);
+    const row = document.createElement("div");
+    row.className = "chip-row";
+    for (const cls of tax.classes) {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = cls;
+      row.appendChild(chip);
+    }
+    host.appendChild(row);
+    const list = document.createElement("ul");
+    for (const [group, members] of groups) {
+      const li = document.createElement("li");
+      const code = document.createElement("code");
+      code.textContent = group;
+      li.append(code, ": " + (Array.isArray(members) ? members.join(" · ") : ""));
+      list.appendChild(li);
+    }
+    host.appendChild(list);
+  }
+  if (!shown) {
+    const note = document.createElement("div");
+    note.className = "slot-note";
+    note.textContent = "Awaiting the label vocabulary — add a taxonomy object to this test set in the report-data block.";
+    host.appendChild(note);
+  }
+}
 function renderTestSetInfo() {
   const ts = activeSet();
   const ds = ts.dataset || null;
@@ -2975,9 +3379,13 @@ function renderTestSetInfo() {
   const distHost = document.getElementById("ts-distributions");
   const sceneList = document.getElementById("ts-scene-list");
   const sceneCount = document.getElementById("ts-scene-count");
+  const notes = document.getElementById("ts-notes");
   statsHost.textContent = "";
   distHost.textContent = "";
   sceneList.textContent = "";
+  notes.textContent = ts.notes || "";
+  notes.hidden = !ts.notes;
+  renderTaxonomy(document.getElementById("ts-taxonomy"), ts);
   if (!ds) {
     const note = document.createElement("div");
     note.className = "slot-note";
@@ -2990,36 +3398,25 @@ function renderTestSetInfo() {
   const stats = [
     ["Frames", ds.num_frames], ["Scenes", ds.num_scenes],
     ["GT objects", ds.num_objects], ["GT points", ds.num_points],
-    ["Source DBs", Array.isArray(ds.sources) ? ds.sources.length : undefined],
+    ["Source datasets", Array.isArray(ds.sources) ? ds.sources.length : undefined],
   ];
   for (const [k, v] of stats) {
     if (v === undefined || v === null) continue;
-    const cell = document.createElement("div");
-    cell.className = "ts-stat";
-    const kk = document.createElement("div");
-    kk.className = "k";
-    kk.textContent = k;
-    const vv = document.createElement("div");
-    vv.className = "v";
-    vv.textContent = fmtValue(v);
-    cell.append(kk, vv);
+    statsHost.appendChild(statCell(k, v, false));
+  }
+  if (ds.database_version) {
+    const cell = statCell("Database", ds.database_version, true);
+    cell.style.gridColumn = "1 / -1";
     statsHost.appendChild(cell);
   }
   if (Array.isArray(ds.sources) && ds.sources.length) {
-    const cell = document.createElement("div");
-    cell.className = "ts-stat";
+    const cell = statCell("Sources", ds.sources.map((s) => s.db).join(" · "), true);
     cell.style.gridColumn = "1 / -1";
-    const kk = document.createElement("div");
-    kk.className = "k";
-    kk.textContent = "Sources";
-    const vv = document.createElement("div");
-    vv.textContent = ds.sources.map((s) => s.db).join(" · ");
-    cell.append(kk, vv);
     statsHost.appendChild(cell);
   }
   for (const dist of (ds.distributions || [])) distHost.appendChild(renderDistribution(dist));
-  // Scenes are grouped under their source DB: one entry per DB with its scene
-  // fragments (<db>/<uuid>/<version>) nested beneath.
+  // Scenes are grouped under their source dataset: one entry per dataset with its
+  // scene fragments (<dataset>/<uuid>/<version>) nested beneath.
   const sources = Array.isArray(ds.sources) ? ds.sources : [];
   let total = 0;
   for (const src of sources) {
@@ -3071,52 +3468,72 @@ function muteToward(hue, pct) {
   return "color-mix(in oklab, " + hue + ", var(--muted) " + pct + "%)";
 }
 function assignModelColors(models, testSet) {
+  // Hue follows the release, not the model family: the current release owns the page's
+  // identity colour (the same hue the distributions and the confusion matrix use), and
+  // every release it is compared against takes a distinct hue from the series order.
+  // Muting is reserved for a release scored on a different test set major.
   const testMajor = majorOf(testSet.version);
-  const families = [];
-  for (const m of models) {
-    const family = m.model || m.name;
-    if (!families.includes(family)) families.push(family);
-  }
-  const familyHue = {};
-  families.forEach((family, i) => { familyHue[family] = SERIES[i % SERIES.length]; });
-  for (const family of families) {
-    const group = models
-      .filter((m) => (m.model || m.name) === family)
-      .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
-    const newest = group[group.length - 1];
-    group.forEach((m, idx) => {
-      const stepsFromNewest = group.length - 1 - idx;
-      const stale = m.test_set_version != null && majorOf(m.test_set_version) !== testMajor;
-      m._baseHue = familyHue[family];
-      if (stale) {
-        m._color = muteToward(m._baseHue, 60);  // greyed the most
-        m._tier = "stale";
-      } else if (m === newest) {
-        m._color = m._baseHue;                  // full, saturated hue
-        m._tier = "current";
-      } else {
-        m._color = muteToward(m._baseHue, Math.min(48, 30 + (stepsFromNewest - 1) * 10));
-        m._tier = "previous";
-      }
-    });
-  }
+  const ordered = models
+    .slice()
+    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+  const newest = ordered[ordered.length - 1];
+  ordered.forEach((m) => {
+    const stale = m.test_set_version != null && majorOf(m.test_set_version) !== testMajor;
+    if (m === newest) {
+      m._baseHue = "var(--seq)";
+      m._tier = "current";
+    } else {
+      const stepsFromNewest = ordered.length - 1 - ordered.indexOf(m);
+      m._baseHue = SERIES[(stepsFromNewest - 1) % SERIES.length];
+      m._tier = "previous";
+    }
+    m._color = stale ? muteToward(m._baseHue, 45) : m._baseHue;
+    if (stale) m._tier = "stale";
+  });
 }
 // The release name (v0.3, v0.2, …) already identifies each bar; greying conveys
 // the tier, so no extra "previous" / "different test set" tag is appended.
 const TIER_TAG = { current: "", previous: "", stale: "" };
 
+// The release block of the current release: one headline sentence and the major
+// changes in the model and in the test, as bullet lists. Absent block, hidden section.
+function renderReleaseChanges() {
+  const section = document.getElementById("changes");
+  const release = DATA.release;
+  if (!section) return;
+  if (!release || typeof release !== "object") { section.hidden = true; return; }
+  const name = document.querySelector('[data-bind="changes-release"]');
+  if (name) name.textContent = release.name || "this release";
+  const headline = document.getElementById("changes-headline");
+  headline.textContent = release.headline || "";
+  headline.hidden = !release.headline;
+  const changes = release.changes || {};
+  for (const [key, id] of [["model", "changes-model"], ["test", "changes-test"]]) {
+    const list = document.getElementById(id);
+    list.textContent = "";
+    for (const item of changes[key] || []) {
+      const li = document.createElement("li");
+      li.textContent = item;
+      list.appendChild(li);
+    }
+    list.parentElement.hidden = !(changes[key] || []).length;
+  }
+  section.hidden = false;
+}
 function render() {
   const ts = activeSet();
   MODELS = ts.models || [];
   assignModelColors(MODELS, ts);
   METRIC_SPEC = ts.metric_spec || null;
   toggleSections();
+  renderReleaseChanges();
   renderTestSetInfo();
   bindMeta();
   renderRegistry();
   renderAllCharts();
   buildAppendix("det3d", "det-appendix", "det-count");
   buildAppendix("seg3d", "seg-appendix", "seg-count");
+  buildExtraAppendices();
   renderMetricSpec();
   for (const id of ["det-search", "seg-search"]) {
     const el = document.getElementById(id);
