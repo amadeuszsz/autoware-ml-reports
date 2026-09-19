@@ -337,7 +337,7 @@
   </p>
   <div class="meta-row">
     <span class="chip">Status: draft for review</span>
-    <span class="chip">2026-07-22</span>
+    <span class="chip">2026-09-08</span>
     <span class="chip">Scope: detection3d + segmentation3d</span>
     <span class="chip repo-aml">AML = autoware-ml</span>
     <span class="chip repo-ape">APE = autoware_perception_evaluation</span>
@@ -525,8 +525,8 @@
     primitives — and <b>walkway</b> (pedestrian <code>walkway</code> lanelets).
     Detection boxes and segmentation points are placed into a region by transforming them to the map frame
     with the per-frame ego pose and testing polygon membership. <a href="#filters">Section 5</a> defines the
-    filter; a region slice on a map-less dataset fails loud rather than silently reporting whole-scene,
-    and whole-scene is always published beside the region slices.
+    filter; a map-less scene drops out of the region slices and is counted in the coverage log rather than
+    silently reported as whole-scene, and whole-scene is always published beside the region slices.
   </div>
 
   <h3>Where each family lives</h3>
@@ -590,13 +590,16 @@
             turn (bounded curvature), <b>clipped to the drivable lanelets</b></td><td>lanelet speed limit</td></tr>
         <tr><td>pedestrian · animal · bicycle</td>
             <td>an <b>isotropic disc</b> — free to move in any direction, over any surface</td>
-            <td>a per-class “reasonable run” cap</td></tr>
-        <tr><td>barrier · traffic_cone · debris · bicycle_rack · vehicle_extension</td>
+            <td>a per-class run speed from the taxonomy (pedestrian 3, animal 4, bicycle 6 m/s)</td></tr>
+        <tr><td>barrier · traffic_cone · debris</td>
             <td><b>stationary</b> — the object footprint; only ego approaches it</td><td>0</td></tr>
       </tbody>
     </table>
   </div>
   <p style="font-size:0.9rem; color:var(--ink2)">
+    Which class is wheeled, living or static, and the living run speeds, are declared by the detection
+    taxonomy of the database a run is bound to (<a href="#classes">Section 6</a>), so the collision model
+    follows the label vocabulary instead of a second hand-written table.
     <b>TTC</b> = the earliest look-ahead time at which ego's reachable set and the object's set overlap
     (stepped at <code>dt</code>), else <b>∞</b> within the horizon <code>T</code>. The horizon is grounded in
     stopping physics — reaction + braking from the lane speed limit (<a href="#rollout">Section 13</a>).
@@ -862,15 +865,17 @@
       <ul>
         <li><strong>Map data is already in the dataset:</strong> gen2 scenes ship <code>map/lanelet2_map.osm</code>
             with <code>local_x/local_y</code> node tags — already in the map frame that ego poses use, no geodetic projection needed.</li>
-        <li>Preprocess once per scene: OSM → per-region polygons (shapely) unioning lanelet relations
-            (left+right bounds) and area/polygon ways → cached <code>.npz</code>/GeoPackage, exposed as a T4Devkit accessor.</li>
+        <li>Parsed once per scene: a map provider resolves the frame's <code>scene_token</code> to the scene's
+            <code>lanelet2_map.osm</code>, reads it with lanelet2 and unions the lanelets (by <code>subtype</code>)
+            and areas (by <code>type</code>) of each region into one polygon, cached per scene.</li>
         <li>Boxes/points are in base_link → transform to the map frame with the stored ego pose;
             <code>RegionFilter.required_eval_keys = (ego2global, scene_token)</code>, folded into the suite's fail-loud check.</li>
         <li>Implemented once as a shared filter axis (both suites), so a new metric inherits the road /
             walkway slices for free — never re-implemented per metric.</li>
         <li><strong>Availability:</strong> older DBs (db_j6_v3, db_j6_v5, db_largebus_v1, …) have no
-            <code>map/</code> directory. A region filter is declared per-dataset and <strong>fails loud</strong>
-            where the map is absent — never silently collapsing to whole-scene.</li>
+            <code>map/</code> directory. The provider reports a missing map up front, so the scene is excluded
+            from the map-backed slices and counted in the coverage log — never silently collapsed to
+            whole-scene; a map that exists but does not parse still <strong>fails loud</strong>.</li>
         <li><strong>Caveat from real maps:</strong> <code>walkway</code> is sparse (≈1 lanelet/scene); most
             pedestrian space is <code>crosswalk</code>, which sits in the road region — so the standalone
             walkway slice is often near-empty by design.</li>
@@ -1011,35 +1016,42 @@
   <div class="sec-label">Section 6</div>
   <h2>Classes and taxonomy</h2>
   <p>
-    Detection and segmentation are trained and scored over fixed class sets, mapped from the raw T4
-    annotation names at data-load time by an explicit <code>name_mapping</code> (raw&nbsp;→&nbsp;final class;
-    a category left unmapped or set to <code>null</code> is ignored, so a dataset's extra categories never
-    break loading). Every per-class metric in the catalog is reported over these classes and, in parallel,
-    over the <strong>behaviour taxonomy</strong> that folds them into driving-equivalent groups.
+    Detection and segmentation are trained and scored over the class set of the <strong>database
+    taxonomy</strong> a run is bound to. The raw T4 annotation names are folded onto the trained classes when
+    the database record table is built (one <code>coarsening</code> table per task; a name mapped to
+    <code>null</code> is ignored), so the boxes and point labels a model sees, the class-keyed tables the
+    metrics read (eval ranges, collision kinds and speeds, behaviour groups) and the report all share one
+    vocabulary. Two levels exist: the <strong>online</strong> taxonomy below is the one the deployed models
+    train; the <strong>offline</strong> level splits several of its classes into fine subtypes for the teacher
+    models used in pseudo labeling and is never deployed. Every per-class metric in the catalog is reported
+    over the trained classes and, in parallel, over the <strong>behaviour taxonomy</strong> that folds them
+    into driving-equivalent groups.
   </p>
   <div class="cards two" style="margin:14px 0;">
     <div class="card">
-      <h3>det3d — 13 classes</h3>
+      <h3>det3d — 11 classes (online)</h3>
       <p style="font-size:0.9rem;"><code>car</code> · <code>truck</code> · <code>bus</code> · <code>train</code> ·
       <code>motorcycle</code> · <code>bicycle</code> · <code>pedestrian</code> · <code>animal</code> ·
-      <code>barrier</code> · <code>traffic_cone</code> · <code>debris</code> · <code>bicycle_rack</code> ·
-      <code>vehicle_extension</code>.</p>
-      <p style="font-size:0.9rem; color:var(--ink2);">Representative folds at load: emergency / forklift / kart
-      / police / ambulance → car; construction / tractor / fire-truck → truck; <code>pushable_pullable</code>
-      → debris; open-door / protruding object → <code>vehicle_extension</code>; the pedestrian sub-types →
-      pedestrian. <code>trailer</code> is geometrically merged into its towing <code>truck</code>. Boxes are
-      filtered by point count and per-class eval range before scoring.</p>
+      <code>barrier</code> · <code>traffic_cone</code> · <code>debris</code>.</p>
+      <p style="font-size:0.9rem; color:var(--ink2);">Representative folds: kart / other vehicle / police /
+      ambulance / emergency vehicle → car; forklift / construction vehicle / fire truck / trailer → truck;
+      stroller / personal mobility → pedestrian; construction sign → barrier; <code>pushable_pullable</code>
+      → debris. A trailer attached to a truck is merged into the truck box by the box pipelines; bicycle
+      racks, open doors and protruding vehicle parts are ignored. Boxes are filtered by point count and
+      per-class eval range before scoring.</p>
     </div>
     <div class="card">
-      <h3>seg3d — 20 classes</h3>
-      <p style="font-size:0.9rem;">the 13 detection classes, plus <code>drivable_flat</code> ·
-      <code>non_drivable_flat</code> · <code>vegetation</code> · <code>building</code> ·
-      <code>vertical_thin</code> · <code>static_clutter</code> · <code>noise</code>.</p>
-      <p style="font-size:0.9rem; color:var(--ink2);">Surface / structure folds: drivable-surface / drainage →
-      drivable_flat; sidewalk / curbs / other-flat → non_drivable_flat; poles / lights / signs / bollards /
-      flags → vertical_thin; manmade → building; solid- / other-stuff → static_clutter; noise / ghost-point →
-      noise. <code>background</code>, <code>ego_vehicle</code>, <code>out_of_sync</code> and
-      <code>unpainted</code> map to the ignore index and are excluded everywhere.</p>
+      <h3>seg3d — 18 classes (online)</h3>
+      <p style="font-size:0.9rem;">the 11 detection classes first, in the same order, plus
+      <code>driveable_flat</code> · <code>non_driveable_flat</code> · <code>curb</code> ·
+      <code>vegetation</code> · <code>manmade</code> · <code>vertical_thin</code> · <code>noise</code>.</p>
+      <p style="font-size:0.9rem; color:var(--ink2);">Surface / structure folds: drivable surface / drainage →
+      driveable_flat; sidewalk / other flat surface → non_driveable_flat; low / high curb → curb; building /
+      solid stuff / other stuff / bicycle rack → manmade; poles / lights / signs / bollards / flags →
+      vertical_thin; noise / ghost point → noise. <code>background</code>, <code>ego_vehicle</code> and
+      <code>out_of_sync</code> map to the ignore index and are excluded everywhere. Sharing the detection
+      prefix gives a detection class and its segmentation class one index, which the partial-detection score
+      relies on.</p>
     </div>
   </div>
 
@@ -1059,11 +1071,11 @@
         see the <em>kind</em> of thing that matters" from "did it name it exactly".</li>
   </ul>
   <p>
-    A single <code>class_groups</code> key declares the taxonomy — a full partition of the trained classes,
-    each group named with a <code>grouped_</code> prefix (even singletons such as
-    <code>grouped_debris</code>, so a group name is always unambiguous):
+    The <code>class_groups</code> table of the taxonomy declares the behaviour groups — a full partition of
+    the trained classes, each group named with a <code>grouped_</code> prefix (even a singleton such as
+    <code>grouped_artifact</code>, so a group name is always unambiguous):
   </p>
-  <div class="formula">class_groups:&nbsp;&nbsp;# seg3d<br>&nbsp;&nbsp;grouped_vehicle: [car, truck, bus, train, vehicle_extension]<br>&nbsp;&nbsp;grouped_structure: [building, vertical_thin, bicycle_rack]<br>&nbsp;&nbsp;grouped_flat: [drivable_flat, non_drivable_flat]</div>
+  <div class="formula">class_groups:&nbsp;&nbsp;# seg3d<br>&nbsp;&nbsp;grouped_vehicle: [car, truck, bus, train]<br>&nbsp;&nbsp;grouped_static_structure: [manmade, vertical_thin, vegetation]<br>&nbsp;&nbsp;grouped_flat_surface: [driveable_flat, non_driveable_flat, curb]</div>
   <ul style="font-size:0.92rem; color:var(--ink2);">
     <li><strong>Always a replace, never additive.</strong> When a suite is built with
         <code>class_groups</code>, labels are relabeled to their group and scores are marginalized (summed
@@ -1075,45 +1087,41 @@
     <li><strong>Filters first, fold second.</strong> The ground-truth filters (point count, range) act on
         the trained classes; the fold happens afterwards, at metric time — so the two taxonomies count the
         same objects and points, only labelled at a different granularity.</li>
-    <li><strong>Full partition, forward-compatible.</strong> The groups must cover <em>every</em> trained
-        class (an unassigned class fails loud). A member that is not currently trained is simply skipped, so
-        a group can name a class the model will only learn later without breaking the current run.</li>
+    <li><strong>Full partition.</strong> The groups must cover <em>every</em> trained class and name no
+        other; an unassigned or unknown member fails loud, listing the valid names.</li>
   </ul>
   <p>The taxonomies used for the two tasks:</p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>det3d group (6)</th><th>trained classes folded in</th></tr></thead>
+      <thead><tr><th>det3d group (4)</th><th>trained classes folded in</th></tr></thead>
       <tbody>
-        <tr><td><code>grouped_vehicle</code></td><td>car · truck · bus · train · vehicle_extension</td></tr>
+        <tr><td><code>grouped_vehicle</code></td><td>car · truck · bus · train</td></tr>
         <tr><td><code>grouped_two_wheeler</code></td><td>motorcycle · bicycle</td></tr>
-        <tr><td><code>grouped_pedestrian_animal</code></td><td>pedestrian · animal</td></tr>
-        <tr><td><code>grouped_static_obstacle</code></td><td>barrier · traffic_cone</td></tr>
-        <tr><td><code>grouped_debris</code></td><td>debris</td></tr>
-        <tr><td><code>grouped_structure</code></td><td>bicycle_rack</td></tr>
+        <tr><td><code>grouped_living</code></td><td>pedestrian · animal</td></tr>
+        <tr><td><code>grouped_obstacle</code></td><td>barrier · traffic_cone · debris</td></tr>
       </tbody>
     </table>
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>seg3d group (10)</th><th>trained classes folded in</th></tr></thead>
+      <thead><tr><th>seg3d group (7)</th><th>trained classes folded in</th></tr></thead>
       <tbody>
-        <tr><td><code>grouped_vehicle</code></td><td>car · truck · bus · train · vehicle_extension</td></tr>
+        <tr><td><code>grouped_vehicle</code></td><td>car · truck · bus · train</td></tr>
         <tr><td><code>grouped_two_wheeler</code></td><td>motorcycle · bicycle</td></tr>
-        <tr><td><code>grouped_pedestrian_animal</code></td><td>pedestrian · animal</td></tr>
-        <tr><td><code>grouped_static_obstacle</code></td><td>barrier · traffic_cone</td></tr>
-        <tr><td><code>grouped_debris</code></td><td>debris</td></tr>
-        <tr><td><code>grouped_static_clutter</code></td><td>static_clutter</td></tr>
-        <tr><td><code>grouped_flat</code></td><td>drivable_flat · non_drivable_flat</td></tr>
-        <tr><td><code>grouped_vegetation</code></td><td>vegetation</td></tr>
-        <tr><td><code>grouped_structure</code></td><td>building · vertical_thin · bicycle_rack</td></tr>
-        <tr><td><code>grouped_noise</code></td><td>noise</td></tr>
+        <tr><td><code>grouped_living</code></td><td>pedestrian · animal</td></tr>
+        <tr><td><code>grouped_obstacle</code></td><td>barrier · traffic_cone · debris</td></tr>
+        <tr><td><code>grouped_static_structure</code></td><td>manmade · vertical_thin · vegetation</td></tr>
+        <tr><td><code>grouped_flat_surface</code></td><td>driveable_flat · non_driveable_flat · curb</td></tr>
+        <tr><td><code>grouped_artifact</code></td><td>noise</td></tr>
       </tbody>
     </table>
   </div>
   <p style="font-size:0.9rem; color:var(--ink2);">
-    Member names are the final class names; an unknown name fails loud, listing the valid ones. Detection
-    folds label tensors before matching (a bus box matched to a truck box is a hit for
-    <code>grouped_vehicle</code>); segmentation folds the confusion matrix and the cached point labels.
+    Member names are the trained class names. Detection folds label tensors before matching (a bus box
+    matched to a truck box is a hit for <code>grouped_vehicle</code>); segmentation folds the confusion
+    matrix and the cached point labels. The report carries the vocabulary as data: each release file lists
+    the classes and groups its test set was scored on (<a href="#architecture">Section 8</a>), so a
+    vocabulary change shows up as a new class axis instead of a silent relabeling.
   </p>
 </section>
 
@@ -1976,10 +1984,10 @@
   <!-- ===== uncertainty metrics ===== -->
   <div class="callout">
     <b>Region variants apply here too.</b> Like every metric in this plan, the uncertainty metrics below are
-    reported whole-scene and per lanelet region — road, walkway, and both — via the region filter defined in
-    <a href="#filters">Section 5</a>. The <a href="#m-confident-error">confident-error rate</a> in
-    particular reads naturally per region (confident errors
-    <em>on the road</em> versus on the walkway).
+    reported whole-scene and per filter slice — road, walkway, the straight corridor and the collision
+    area — via the filters defined in <a href="#filters">Section 5</a>. The
+    <a href="#m-confident-error">confident-error rate</a> in particular reads naturally per slice (confident
+    errors <em>in ego's path</em> versus anywhere in the scene).
   </div>
 
   <article class="metric" id="m-calibration">
@@ -2324,8 +2332,9 @@
           <td><code>Segmentation3DPointCloudMetricSuite</code></td>
           <td>Raw per-frame point cache (coord, labels, per-class scores) — the spatial / uncertainty
               metrics need what a confusion matrix has discarded; too heavy for every val epoch</td>
-          <td>error clusters · partial detection · tolerant error rate · calibration error ·
-              entropy AUROC · confident-error rate</td>
+          <td>error clusters · tolerant error rate · calibration error · entropy AUROC · confident-error
+              rate; a second instance under its own prefix, composed by the joint detection + segmentation
+              dataset package only, serves the partial-detection score (never grouped)</td>
         </tr>
       </tbody>
     </table>
@@ -2363,54 +2372,70 @@
     the report-data schema; the builder parses one or more of
     them into a copy of the report layout. Files are read <strong>in order</strong>
     (oldest&nbsp;→&nbsp;newest): each contributes one model per test set, and the report draws them as
-    comparison bars with the last as the current release. This is the boundary between repos — a det3d repo
-    and a seg3d repo can each emit their own file for a release; the builder aligns them by
+    comparison bars with the last as the current release. The current release also defines the test set the
+    page describes — its label vocabulary, dataset and metric spec — so a class that no longer exists shows a
+    dash for the older release instead of a silently relabeled bar. This is the boundary between repos — a
+    det3d repo and a seg3d repo can each emit their own file for a release; the builder aligns them by
     <code>test_set.id</code>.
   </p>
   <details>
     <summary>The JSON contract</summary>
     <div class="body">
       <div class="formula" style="white-space: pre">{
-  "schema_version": "1.0",
+  "schema_version": "0.2",
   "repo_url": "https://github.com/&lt;org&gt;/autoware-ml",   // optional, base for commit links
   "test_sets": [
     {
-      "id": "det3d", "label": "det3d", "version": "1.0",       // aligned across files by id; version gates comparability
-      "tasks": ["det3d"],                                      // which metric sections show
-      "dataset": { "num_frames": 5910, "num_scenes": 244,
-                   "sources": [ {"db": "db_j6gen2_v1", "scenes": ["db_j6gen2_v1/&lt;uuid&gt;/0", "..."]} ],
+      "id": "det3d-seg3d-j6gen2", "label": "det3d-seg3d-j6gen2-v0.1.0", "version": "0.1.0",
+      "tasks": ["det3d", "seg3d"],                             // which metric sections show
+      "notes": "…",                                            // optional, shown with the test set
+      "taxonomy": {                                            // the vocabulary the release was scored on
+        "det3d": { "classes": ["car", "truck", "…"],
+                   "groups": { "grouped_vehicle": ["car", "truck", "…"], "…": [] } },
+        "seg3d": { "classes": ["…"], "groups": { "…": [] } }
+      },
+      "dataset": { "database_version": "T4Dataset-…", "num_frames": 140, "num_scenes": 7,
+                   "sources": [ {"db": "semseg_batch1_fixed_v1", "scenes": ["semseg_batch1_fixed_v1/&lt;uuid&gt;/1", "..."]} ],
                    "distributions": [ {"title": "GT objects per class", "unit": "objects",
-                                       "bars": [ {"label": "car", "value": 41892} ]} ] },
-      "metric_spec": { "bundle": "1.0.0",
-                       "metrics": { "corner_error": {"version": "1.0", "params": {"tp_threshold_m": 2.0}} } },
+                                       "bars": [ {"label": "car", "value": 3480} ]} ] },
+      "metric_spec": { "bundle": "0.2.0",
+                       "metrics": { "corner_error": {"version": "0.1", "params": {"tp_threshold_m": 2.0}} } },
       "models": [                                              // ONE model per file (this release)
-        { "name": "PTv3 v0.3", "model": "PTv3", "date": "2026-07-28",
-          "test_set_version": "1.0",                           // MAJOR ≠ test set's ⇒ greyed as a different test set
-          "repo_commit": "…", "eval_config": "…",
+        { "name": "v0.1.0", "model": "LitePT multi-head", "date": "2026-09-08",
+          "test_set_version": "0.1.0",                         // MAJOR ≠ test set's ⇒ greyed as a different test set
+          "metric_spec_bundle": "0.2.0",
+          "repo_commit": "…", "eval_config": "…", "checkpoint": "…",
           "metrics": {
-            "det3d":         { "mAP_0m_121m": 0.71, "region_road/mAP_car_0m_50m": 0.64, "…": null },
-            "det3d_grouped": { "mAP_grouped_vehicle_0m_121m": 0.80 }
+            "det3d":         { "mAP_0m_121m": 0.36, "corridor/mAP_car_0m_50m": 0.91, "…": null },
+            "det3d_grouped": { "mAP_grouped_vehicle_0m_121m": 0.87 },
+            "segdet3d":      { "pd_score_pedestrian_0m_121m": 0.77 }
           } } ]
     }
-    // …one entry per test set (seg3d buckets: seg3d, seg3d_grouped)…
+    // …one entry per test set the release was evaluated on…
   ]
 }</div>
       <ul style="font-size:0.92rem; color:var(--ink2);">
         <li><strong>Metric keys</strong> are exactly what the suites emit — <code>[filter/]name_range</code>
             (e.g. <code>corridor/iou_car_0m_50m</code>). <code>NaN</code> → <code>null</code>
             (rendered as "–", meaning no support), because JSON has no NaN.</li>
-        <li><strong>Buckets</strong> are the metric namespaces: <code>det3d</code>, <code>det3d_grouped</code>,
+        <li><strong>Buckets</strong> are the suite namespaces: <code>det3d</code>, <code>det3d_grouped</code>,
             <code>det3d_visible</code>, <code>det3d_overall</code>, <code>seg3d</code>,
-            <code>seg3d_grouped</code>. The taxonomy tab switches per-class vs the <code>_grouped</code> fold.</li>
+            <code>seg3d_grouped</code>, and <code>segdet3d</code> for the partial-detection score of a joint
+            test set. The taxonomy tab switches per-class vs the <code>_grouped</code> fold.</li>
+        <li><strong>The vocabulary travels with the data.</strong> <code>taxonomy</code> lists the classes and
+            behaviour groups the release was scored on; the report draws its per-class rows from it, so the
+            layout holds no class list of its own.</li>
         <li><strong>Order is the comparison order.</strong> <code>build_report.py a.json b.json c.json</code>
-            concatenates each test set's model from every file in that order; <code>dataset</code>,
-            <code>metric_spec</code>, <code>label</code> and <code>version</code> are taken from the first
-            file that provides them.</li>
+            concatenates each test set's model from every file in that order; <code>taxonomy</code>,
+            <code>dataset</code>, <code>metric_spec</code>, <code>label</code> and <code>version</code> are
+            taken from the last file that provides them, the current release.</li>
         <li><strong>Separation of concerns.</strong> How the numbers get from an eval run into a JSON file is
             each repo's business; the layout and the builder only consume this contract.</li>
       </ul>
     </div>
   </details>
+
+</section>  </details>
 
 </section>
 
@@ -2620,13 +2645,13 @@
       </thead>
       <tbody>
         <tr><td>Ego pose per frame + lane speed limit</td><td>Region &amp; collision filters (frame transform), the collision-risk metrics (reachable set / TTC)</td><td class="yes">Any T4 dataset for <code>ego2global</code>; the ego reachable set needs the current ego state + the lane speed limit (gen2 map), no tracker and no recorded future</td></tr>
-        <tr><td>GT boxes + <code>num_lidar_pts</code> + valid flag</td><td>mAP / APH / NDS / TP errors, the true-positive quality metrics, critical FP / FN, and the min-points filter</td><td class="yes">Det3D T4Dataset — box columns and point counts come from t4_devkit; <code>num_lidar_pts</code> drives the min-points filter and the validity flag</td></tr>
+        <tr><td>GT boxes + per-box lidar point count</td><td>mAP / APH / NDS / TP errors, the true-positive quality metrics, critical FP / FN, the min-points filter and the occlusion split</td><td class="yes">Det3D T4Dataset — boxes and point counts are baked into the database record table from t4_devkit; the point count drives the min-points filter and the visible / overall split</td></tr>
         <tr><td>Friction-limited turn radius (R = v²/a<sub>lat</sub>), per-class VRU run speeds, off-map fallback speed</td><td>The reachability engine behind the collision-risk metrics</td><td class="yes">Spec constants, not dataset fields — the wheeled max speed itself comes from the lanelet <code>speed_limit</code> (row above); reachability is deliberately independent of any observed velocity, so no per-object GT velocity is required</td></tr>
-        <tr><td>Lanelet map — road / walkway / crosswalk polygons + speed limits (<code>map/lanelet2_map.osm</code>, local coords)</td><td>Region filter (Section 5) — every det3d + seg3d road / walkway slice; the ego reachable set (lane speed limit) for the collision-risk metrics</td><td>gen2 DBs only — older DBs (db_j6_v3/v5, db_largebus_v1, …) ship no <code>map/</code>; the region slice is declared per dataset and fails loud where the map is absent</td></tr>
+        <tr><td>Lanelet map — road / walkway / crosswalk polygons + speed limits (<code>map/lanelet2_map.osm</code>, local coords)</td><td>Region filter (Section 5) — every det3d + seg3d road / walkway slice; the ego reachable set (lane speed limit) for the collision-risk metrics</td><td>gen2 DBs only — older DBs (db_j6_v3/v5, db_largebus_v1, …) ship no <code>map/</code>; a scene without a map is excluded from the map-backed slices and the collision metrics and reported in the coverage log</td></tr>
         <tr><td>Per-point semantic labels (real lidarseg)</td><td>All seg3d metrics (IoU / acc / PRF1, the segmentation-quality and uncertainty families)</td><td>Seg3D T4Dataset — a det3d dataset with <b>pseudo-labelled</b> point masks, or a dataset carrying real per-frame detection <em>and</em> segmentation together (the segdet path accepts both when present)</td></tr>
         <tr><td>Per-point softmax scores (test point-cache)</td><td>All three uncertainty metrics</td><td class="yes">Produced at test on any seg3d evaluation — a model output, the cache's reason for storing scores</td></tr>
         <tr><td>GT detection boxes <em>and</em> point labels on the same frame</td><td>Small-object partial-detection score</td><td>A dataset (or the segdet pipeline) that provides detection boxes and point labels together for the same frame</td></tr>
-        <tr><td>Stable GT instance token across frames</td><td>Per-instance stability &amp; consecutive-miss streaks</td><td class="no">Present in the T4 <em>database</em> layer (<code>box3d_instance_id</code>, stable across a scene) but <b>dropped from the training / eval info pkl</b> and unused by any loader — surfacing it needs an info regeneration</td></tr>
+        <tr><td>Stable GT instance token across frames</td><td>Per-instance stability &amp; consecutive-miss streaks</td><td class="no">Present in the database record table (<code>box3d_instance_id</code>, stable across a scene) but <b>not threaded into the typed sample or the eval output</b> — surfacing it is a sample and eval-output extension, no re-annotation</td></tr>
         <tr><td>Tracker output</td><td>Runtime stability variants, CLEAR</td><td>perception_evaluation only</td></tr>
         <tr><td>Planned trajectory / latency measurements</td><td>Online criticality metrics, latency reporting</td><td>perception_evaluation only</td></tr>
       </tbody>
@@ -2664,8 +2689,8 @@
           <td><strong>2</strong></td>
           <td>Per-instance stability &amp; consecutive-miss streaks.</td>
           <td><b>A continuous stream.</b> Following one object frame to frame needs the stable instance token
-              surfaced from the T4 database (<code>box3d_instance_id</code>) into the info pkl (a regeneration)
-              + scene-grouped per-instance state.</td>
+              threaded from the database record table (<code>box3d_instance_id</code>) into the typed sample
+              and the eval output + scene-grouped per-instance state.</td>
           <td><span class="chip repo-aml">AML</span></td>
         </tr>
         <tr>
