@@ -638,7 +638,7 @@
         {
           "name": "v0.1.0",
           "model": "PTv3 multi-head",
-          "date": "2026-09-18",
+          "date": "2026-09-15",
           "test_set_version": "0.1.0",
           "metric_spec_bundle": "0.2.0",
           "repo_commit": "5c56e77",
@@ -64280,7 +64280,7 @@
         {
           "name": "v0.1.0",
           "model": "PTv3 multi-head",
-          "date": "2026-09-18",
+          "date": "2026-09-15",
           "test_set_version": "0.1.0",
           "metric_spec_bundle": "0.2.0",
           "repo_commit": "5c56e77",
@@ -78988,7 +78988,7 @@
         {
           "name": "v0.1.0",
           "model": "PTv3 multi-head",
-          "date": "2026-09-18",
+          "date": "2026-09-15",
           "test_set_version": "0.1.0",
           "metric_spec_bundle": "0.2.0",
           "repo_commit": "5c56e77",
