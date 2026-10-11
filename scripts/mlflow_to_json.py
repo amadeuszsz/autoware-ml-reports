@@ -61,6 +61,7 @@ BUCKET_ALIAS = {
     "seg3d_pt": "seg3d",
     "seg3d_grouped": "seg3d_grouped",
     "seg3d_pt/grouped": "seg3d_grouped",
+    "segdet3d": "segdet3d",
     "segdet3d_pt": "segdet3d",
 }
 # Per task, the whole-scene count and the rate of the same quantity per frame.
@@ -256,17 +257,25 @@ def source_params(params: dict[str, object], tasks: tuple[str, ...]) -> dict[str
     that scores detection on one corpus and segmentation on another describes
     two test sets. The source whose task flags match is the one that describes
     this test set, and its keys are returned rooted at ``database/``.
+
+    A single task config logs its one source without task flags, the task being
+    implicit in the config. A run whose only source carries no flags therefore
+    serves the tasks of this test set.
     """
     matches = []
     index = 0
+    unflagged = []
     while f"datamodule/test_sources/{index}/database/version" in params:
         prefix = f"datamodule/test_sources/{index}/"
+        source = {key[len(prefix):]: value for key, value in params.items() if key.startswith(prefix)}
+        if not any(prefix + task in params for task in ("det3d", "seg3d")):
+            unflagged.append(source)
         served = tuple(task for task in ("det3d", "seg3d") if params.get(prefix + task) is True)
         if served == tuple(tasks):
-            matches.append(
-                {key[len(prefix):]: value for key, value in params.items() if key.startswith(prefix)}
-            )
+            matches.append(source)
         index += 1
+    if not matches and index == 1 and len(unflagged) == 1:
+        matches = unflagged
     if len(matches) != 1:
         raise ValueError(
             f"expected exactly one of the run's {index} test sources to serve {list(tasks)}, "
@@ -362,7 +371,9 @@ def metric_spec(tasks: tuple[str, ...], params: dict[str, object]) -> dict:
     if "seg3d" in tasks:
         metrics.update(SEG_SPEC)
     if tasks == ("det3d", "seg3d"):
-        box_classes = params.get("database/taxonomy/detection3d/partial_detection_classes")
+        # Older runs log the classes in the database taxonomy, newer ones in the segdet3d dataset config.
+        box_classes = params.get("database/taxonomy/detection3d/partial_detection_classes",
+                                 params.get("dataset/segdet3d/partial_detection_classes"))
         if not isinstance(box_classes, list):
             raise ValueError("run logs no partial_detection_classes in the detection taxonomy.")
         metrics["partial_detection"] = {
@@ -374,7 +385,7 @@ def metric_spec(tasks: tuple[str, ...], params: dict[str, object]) -> dict:
 
 def build_test_set(
     con: sqlite3.Connection, test_set_id: str, run_id: str, release: str, model: str,
-    test_set_version: str, note: str | None,
+    test_set_version: str, note: str | None, introduced_in: str | None,
 ) -> dict:
     definition = TEST_SETS[test_set_id]
     info = read_info(con, run_id)
@@ -424,6 +435,8 @@ def build_test_set(
     }
     if note:
         test_set["notes"] = note
+    if introduced_in:
+        test_set["introduced_in"] = introduced_in
     return test_set
 
 
@@ -450,11 +463,14 @@ def main(argv=None):
                         help="Version stamped on every test set (default: the release number without its v).")
     parser.add_argument("--note", action="append", default=[], metavar="TEST_SET=TEXT",
                         help="Free-text note shown in the report's test-set section.")
+    parser.add_argument("--introduced-in", action="append", default=[], metavar="TEST_SET=RELEASE",
+                        help="Release that introduced the test set's current data, so earlier releases are left out.")
     parser.add_argument("--out", required=True, help="Output release JSON path.")
     args = parser.parse_args(argv)
 
     runs = parse_assignments(args.run, "--run")
     notes = parse_assignments(args.note, "--note")
+    introduced = parse_assignments(args.introduced_in, "--introduced-in")
     version = args.test_set_version or args.release.lstrip("v")
 
     con = sqlite3.connect(args.db)
@@ -462,7 +478,8 @@ def main(argv=None):
         "schema_version": SCHEMA_VERSION,
         "repo_url": REPO_URL,
         "test_sets": [
-            build_test_set(con, test_set_id, run_id, args.release, args.model, version, notes.get(test_set_id))
+            build_test_set(con, test_set_id, run_id, args.release, args.model, version,
+                           notes.get(test_set_id), introduced.get(test_set_id))
             for test_set_id, run_id in runs.items()
         ],
     }

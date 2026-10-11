@@ -56,6 +56,9 @@ def _validate(doc, source):
                 raise ValueError(f"{source}: test set missing required field {field!r}.")
         if not isinstance(test_set["models"], list):
             raise ValueError(f"{source}: test set {test_set['id']!r} 'models' must be a list.")
+        introduced_in = test_set.get("introduced_in")
+        if introduced_in is not None and (not isinstance(introduced_in, str) or not introduced_in):
+            raise ValueError(f"{source}: test set {test_set['id']!r} 'introduced_in' must be a release name.")
         for task in test_set["tasks"]:
             taxonomy = test_set["taxonomy"].get(task)
             if not isinstance(taxonomy, dict) or not taxonomy.get("classes") or not isinstance(taxonomy.get("groups"), dict):
@@ -74,11 +77,13 @@ def merge_releases(docs):
 
     Test sets are aligned by ``id`` (first-appearance order); each file's models
     are appended in file order. The descriptive fields (label, version, tasks,
-    taxonomy, dataset, metric_spec, notes) and the top-level release notes are
-    taken from the LAST file that provides a value, so the page describes the
-    current release. A
-    ``version`` whose MAJOR differs from an earlier file's only warns (the page
-    greys hard MAJOR mismatches itself through each model's test_set_version).
+    taxonomy, dataset, metric_spec, notes, introduced_in) and the top-level
+    release notes are taken from the LAST file that provides a value, so the page
+    describes the current release. A test set with ``introduced_in`` keeps only
+    the models from that release on, since earlier ones were scored on other
+    data. A ``version`` whose MAJOR differs from an earlier file's only warns (the
+    page greys hard MAJOR mismatches itself through each model's
+    test_set_version).
     """
     repo_url = None
     release = None
@@ -99,11 +104,18 @@ def merge_releases(docs):
                 print(f"WARNING: {source}: test set {test_set_id!r} MAJOR version "
                       f"{test_set['version']!r} differs from {slot['version']!r}, "
                       "earlier releases are greyed as a different test set.", file=sys.stderr)
-            for field in ("label", "version", "tasks", "taxonomy", "dataset", "metric_spec", "notes"):
+            for field in ("label", "version", "tasks", "taxonomy", "dataset", "metric_spec", "notes", "introduced_in"):
                 if test_set.get(field) is not None:
                     slot[field] = test_set[field]
             slot.setdefault("label", test_set_id)
             slot["models"].extend(test_set["models"])
+    for slot in merged.values():
+        if "introduced_in" in slot:
+            names = [model["name"] for model in slot["models"]]
+            if slot["introduced_in"] not in names:
+                raise ValueError(f"test set {slot['id']!r} was introduced in {slot['introduced_in']!r}, "
+                                 "but no release of that name was scored on it.")
+            slot["models"] = slot["models"][names.index(slot["introduced_in"]):]
     report = {"test_sets": [merged[test_set_id] for test_set_id in order]}
     if release is not None:
         report = {"release": release, **report}
