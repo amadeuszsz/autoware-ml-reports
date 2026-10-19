@@ -35,6 +35,7 @@
           "version": {"type": "string", "minLength": 1, "description": "Test-set version; releases with a different MAJOR are greyed as a different test set."},
           "tasks": {"type": "array", "items": {"enum": ["det3d", "seg3d"]}, "description": "Which metric sections show for this test set."},
           "notes": {"type": "string", "description": "Free text shown in the report's test-set section, e.g. what changed against the previous evaluation."},
+          "introduced_in": {"type": "string", "minLength": 1, "description": "Release that introduced the test set's current data. Models of earlier releases under the same id were scored on other data and are left out of the report."},
           "taxonomy": {
             "type": "object",
             "description": "Label vocabulary the release was scored on, one entry per task in tasks. The page draws its per-class rows from the classes and its behaviour-group rows from the group names, so the class axis is data, never a constant of the layout.",

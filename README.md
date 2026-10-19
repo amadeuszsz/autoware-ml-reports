@@ -15,6 +15,7 @@ reports/                                      published model reports (one self-
   ptv3_v0.0.1.html                            PTv3 multi-head PoC release v0.0.1
   ptv3_v0.1.0.html                            PTv3 multi-head release v0.1.0
   ptv3_v0.1.1.html                            PTv3 multi-head release v0.1.1
+  ptv3_v0.1.2.html                            PTv3 multi-head release v0.1.2
 schema/report_data.schema.json               release-data JSON contract (schema 0.2)
 templates/report_layout.html                 report template (data injected into #report-data)
 scripts/build_report.py                       merge release JSON(s) into one self-contained report
@@ -23,6 +24,7 @@ scripts/mlflow_to_json.py                     MLflow test runs of one release in
 data/ptv3_v0.0.1.json                         release v0.0.1 input (extracted from MLflow)
 data/ptv3_v0.1.0.json                         release v0.1.0 input (extracted from MLflow)
 data/ptv3_v0.1.1.json                         release v0.1.1 input (extracted from MLflow)
+data/ptv3_v0.1.2.json                         release v0.1.2 input (extracted from MLflow)
 .nojekyll                                    disables Jekyll processing on Pages
 .github/workflows/deploy-pages.yml           deploys the site to GitHub Pages on push to main
 ```
@@ -43,6 +45,10 @@ data/ptv3_v0.1.1.json                         release v0.1.1 input (extracted fr
        --run seg3d-j6gen2=<test run id> \
        --out data/ptv3_v0.1.0.json
    ```
+
+   When a test set keeps its id but its data changes, pass
+   `--introduced-in <test set>=<release>` so the report leaves out the releases scored on the
+   earlier data.
 
 2. Build a self-contained HTML into `reports/`, oldest release first, the current
    release last:
